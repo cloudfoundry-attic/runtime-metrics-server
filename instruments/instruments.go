@@ -15,32 +15,35 @@ func NewTaskInstrument(metricsBbs bbs.MetricsBBS) *TaskInstrument {
 }
 
 func (t *TaskInstrument) Emit() instrumentation.Context {
+	pendingCount := 0
+	claimedCount := 0
+	runningCount := 0
+	completedCount := 0
+	resolvingCount := 0
+
 	allRunOnces, err := t.bbs.GetAllRunOnces()
-	if err != nil {
-		panic("ARRGH!")
-	}
 
-	var (
-		pendingCount   int
-		claimedCount   int
-		runningCount   int
-		completedCount int
-		resolvingCount int
-	)
-
-	for _, runOnce := range allRunOnces {
-		switch runOnce.State {
-		case models.RunOnceStatePending:
-			pendingCount++
-		case models.RunOnceStateClaimed:
-			claimedCount++
-		case models.RunOnceStateRunning:
-			runningCount++
-		case models.RunOnceStateCompleted:
-			completedCount++
-		case models.RunOnceStateResolving:
-			resolvingCount++
+	if err == nil {
+		for _, runOnce := range allRunOnces {
+			switch runOnce.State {
+			case models.RunOnceStatePending:
+				pendingCount++
+			case models.RunOnceStateClaimed:
+				claimedCount++
+			case models.RunOnceStateRunning:
+				runningCount++
+			case models.RunOnceStateCompleted:
+				completedCount++
+			case models.RunOnceStateResolving:
+				resolvingCount++
+			}
 		}
+	} else {
+		pendingCount = -1
+		claimedCount = -1
+		runningCount = -1
+		completedCount = -1
+		resolvingCount = -1
 	}
 
 	return instrumentation.Context{

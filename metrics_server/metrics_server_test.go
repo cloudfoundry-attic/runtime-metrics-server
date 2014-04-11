@@ -2,6 +2,7 @@ package metrics_server_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -22,10 +23,11 @@ import (
 
 var _ = Describe("Metrics Server", func() {
 	var (
-		fakenats *fakeyagnats.FakeYagnats
-		logger   *steno.Logger
-		bbs      *fake_bbs.FakeMetricsBBS
-		server   *MetricsServer
+		fakenats   *fakeyagnats.FakeYagnats
+		logger     *steno.Logger
+		bbs        *fake_bbs.FakeMetricsBBS
+		server     *MetricsServer
+		httpClient *http.Client
 	)
 
 	BeforeEach(func() {
@@ -38,6 +40,10 @@ var _ = Describe("Metrics Server", func() {
 			Password: "the-password",
 			Index:    3,
 		})
+
+		httpClient = &http.Client{
+			Transport: &http.Transport{},
+		}
 	})
 
 	Describe("Listen", func() {
@@ -56,7 +62,10 @@ var _ = Describe("Metrics Server", func() {
 				payloadChan <- msg.Payload
 			})
 
-			go server.Listen()
+			go func() {
+				err := server.Listen()
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
 		})
 
 		AfterEach(func() {
@@ -83,63 +92,107 @@ var _ = Describe("Metrics Server", func() {
 		}, 3)
 
 		Describe("the varz endpoint", func() {
-			BeforeEach(func() {
-				bbs.GetAllRunOncesReturns.Models = []*models.RunOnce{
-					&models.RunOnce{State: models.RunOnceStatePending},
-					&models.RunOnce{State: models.RunOnceStatePending},
-					&models.RunOnce{State: models.RunOnceStatePending},
-
-					&models.RunOnce{State: models.RunOnceStateClaimed},
-					&models.RunOnce{State: models.RunOnceStateClaimed},
-
-					&models.RunOnce{State: models.RunOnceStateRunning},
-
-					&models.RunOnce{State: models.RunOnceStateCompleted},
-					&models.RunOnce{State: models.RunOnceStateCompleted},
-					&models.RunOnce{State: models.RunOnceStateCompleted},
-					&models.RunOnce{State: models.RunOnceStateCompleted},
-
-					&models.RunOnce{State: models.RunOnceStateResolving},
-					&models.RunOnce{State: models.RunOnceStateResolving},
-				}
-
-			})
-
-			It("returns the number of tasks in each state", func() {
+			getVarz := func() instrumentation.VarzMessage {
 				request, _ := http.NewRequest("GET", "http://"+myIP+":34567/varz", nil)
 				request.SetBasicAuth("the-username", "the-password")
-				response, err := http.DefaultClient.Do(request)
+
+				response, err := httpClient.Do(request)
 				Ω(err).ShouldNot(HaveOccurred())
 				bytes, _ := ioutil.ReadAll(response.Body)
 				varzMessage := instrumentation.VarzMessage{}
-				json.Unmarshal(bytes, &varzMessage)
 
-				Ω(varzMessage.Name).Should(Equal("Runtime-Metrics"))
-				Ω(varzMessage.Contexts[0]).Should(Equal(instrumentation.Context{
-					Name: "Tasks",
-					Metrics: []instrumentation.Metric{
-						{
-							Name:  "Pending",
-							Value: float64(3),
+				err = json.Unmarshal(bytes, &varzMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return varzMessage
+			}
+
+			Context("when the read from the store succeeds", func() {
+				BeforeEach(func() {
+					bbs.GetAllRunOncesReturns.Models = []*models.RunOnce{
+						&models.RunOnce{State: models.RunOnceStatePending},
+						&models.RunOnce{State: models.RunOnceStatePending},
+						&models.RunOnce{State: models.RunOnceStatePending},
+
+						&models.RunOnce{State: models.RunOnceStateClaimed},
+						&models.RunOnce{State: models.RunOnceStateClaimed},
+
+						&models.RunOnce{State: models.RunOnceStateRunning},
+
+						&models.RunOnce{State: models.RunOnceStateCompleted},
+						&models.RunOnce{State: models.RunOnceStateCompleted},
+						&models.RunOnce{State: models.RunOnceStateCompleted},
+						&models.RunOnce{State: models.RunOnceStateCompleted},
+
+						&models.RunOnce{State: models.RunOnceStateResolving},
+						&models.RunOnce{State: models.RunOnceStateResolving},
+					}
+				})
+
+				It("returns the number of tasks in each state", func() {
+					varzMessage := getVarz()
+					Ω(varzMessage.Name).Should(Equal("Runtime-Metrics"))
+					Ω(varzMessage.Contexts[0]).Should(Equal(instrumentation.Context{
+						Name: "Tasks",
+						Metrics: []instrumentation.Metric{
+							{
+								Name:  "Pending",
+								Value: float64(3),
+							},
+							{
+								Name:  "Claimed",
+								Value: float64(2),
+							},
+							{
+								Name:  "Running",
+								Value: float64(1),
+							},
+							{
+								Name:  "Completed",
+								Value: float64(4),
+							},
+							{
+								Name:  "Resolving",
+								Value: float64(2),
+							},
 						},
-						{
-							Name:  "Claimed",
-							Value: float64(2),
+					}))
+				})
+			})
+
+			Context("when there is an error reading from the store", func() {
+				BeforeEach(func() {
+					bbs.GetAllRunOncesReturns.Err = errors.New("Doesn't work")
+				})
+
+				It("reports -1 for all of the task counts", func() {
+					varzMessage := getVarz()
+					Ω(varzMessage.Contexts[0]).Should(Equal(instrumentation.Context{
+						Name: "Tasks",
+						Metrics: []instrumentation.Metric{
+							{
+								Name:  "Pending",
+								Value: float64(-1),
+							},
+							{
+								Name:  "Claimed",
+								Value: float64(-1),
+							},
+							{
+								Name:  "Running",
+								Value: float64(-1),
+							},
+							{
+								Name:  "Completed",
+								Value: float64(-1),
+							},
+							{
+								Name:  "Resolving",
+								Value: float64(-1),
+							},
 						},
-						{
-							Name:  "Running",
-							Value: float64(1),
-						},
-						{
-							Name:  "Completed",
-							Value: float64(4),
-						},
-						{
-							Name:  "Resolving",
-							Value: float64(2),
-						},
-					},
-				}))
+					}))
+				})
 			})
 		})
 
@@ -147,11 +200,16 @@ var _ = Describe("Metrics Server", func() {
 			It("returns success", func() {
 				request, _ := http.NewRequest("GET", "http://"+myIP+":34567/healthz", nil)
 				request.SetBasicAuth("the-username", "the-password")
-				response, err := http.DefaultClient.Do(request)
 
+				response, err := httpClient.Do(request)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(response.StatusCode).To(Equal(200))
+
+				body, err := ioutil.ReadAll(response.Body)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(string(body)).Should(Equal("ok"))
 			})
 		})
 	})

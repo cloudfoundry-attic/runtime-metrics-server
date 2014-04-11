@@ -63,8 +63,6 @@ var natsPassword = flag.String(
 )
 
 func main() {
-	var err error
-
 	flag.Parse()
 
 	natsClient := yagnats.NewClient()
@@ -78,7 +76,7 @@ func main() {
 		)
 	}
 
-	err = natsClient.Connect(&yagnats.ConnectionCluster{
+	err := natsClient.Connect(&yagnats.ConnectionCluster{
 		Members: natsMembers,
 	})
 
