@@ -3,21 +3,21 @@ package metrics_server_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/metricz/localip"
+	. "github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-
-	"github.com/cloudfoundry-incubator/metricz/instrumentation"
-	. "github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
 	"github.com/cloudfoundry/yagnats/fakeyagnats"
-
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 )
 
@@ -26,6 +26,7 @@ var _ = Describe("Metrics Server", func() {
 		fakenats   *fakeyagnats.FakeYagnats
 		logger     *steno.Logger
 		bbs        *fake_bbs.FakeMetricsBBS
+		port       uint32
 		server     *MetricsServer
 		httpClient *http.Client
 	)
@@ -34,8 +35,11 @@ var _ = Describe("Metrics Server", func() {
 		fakenats = fakeyagnats.New()
 		bbs = fake_bbs.NewFakeMetricsBBS()
 		logger = steno.NewLogger("fakelogger")
+
+		port = 34567 + uint32(config.GinkgoConfig.ParallelNode)
+
 		server = New(fakenats, bbs, logger, Config{
-			Port:     34567,
+			Port:     port,
 			Username: "the-username",
 			Password: "the-password",
 			Index:    3,
@@ -79,7 +83,7 @@ var _ = Describe("Metrics Server", func() {
 
 			Ω(response["type"]).Should(Equal("Runtime"))
 
-			Ω(strings.HasSuffix(response["host"].(string), ":34567")).Should(BeTrue())
+			Ω(strings.HasSuffix(response["host"].(string), fmt.Sprintf(":%d", port))).Should(BeTrue())
 
 			Ω(response["credentials"]).Should(Equal([]interface{}{
 				"the-username",
@@ -93,7 +97,7 @@ var _ = Describe("Metrics Server", func() {
 
 		Describe("the varz endpoint", func() {
 			getVarz := func() instrumentation.VarzMessage {
-				request, _ := http.NewRequest("GET", "http://"+myIP+":34567/varz", nil)
+				request, _ := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/varz", myIP, port), nil)
 				request.SetBasicAuth("the-username", "the-password")
 
 				response, err := httpClient.Do(request)
@@ -198,7 +202,7 @@ var _ = Describe("Metrics Server", func() {
 
 		Describe("the healthz endpoint", func() {
 			It("returns success", func() {
-				request, _ := http.NewRequest("GET", "http://"+myIP+":34567/healthz", nil)
+				request, _ := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/healthz", myIP, port), nil)
 				request.SetBasicAuth("the-username", "the-password")
 
 				response, err := httpClient.Do(request)
