@@ -6,15 +6,15 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-type TaskInstrument struct {
+type taskInstrument struct {
 	bbs bbs.MetricsBBS
 }
 
-func NewTaskInstrument(metricsBbs bbs.MetricsBBS) *TaskInstrument {
-	return &TaskInstrument{bbs: metricsBbs}
+func NewTaskInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Instrumentable {
+	return &taskInstrument{bbs: metricsBbs}
 }
 
-func (t *TaskInstrument) Emit() instrumentation.Context {
+func (t *taskInstrument) Emit() instrumentation.Context {
 	pendingCount := 0
 	claimedCount := 0
 	runningCount := 0

@@ -53,6 +53,7 @@ func (server *MetricsServer) Listen() error {
 		[]string{server.config.Username, server.config.Password},
 		[]instrumentation.Instrumentable{
 			instruments.NewTaskInstrument(server.bbs),
+			instruments.NewServiceRegistryInstrument(server.bbs),
 		},
 	)
 

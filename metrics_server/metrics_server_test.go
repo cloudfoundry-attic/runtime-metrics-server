@@ -96,22 +96,24 @@ var _ = Describe("Metrics Server", func() {
 		}, 3)
 
 		Describe("the varz endpoint", func() {
-			getVarz := func() instrumentation.VarzMessage {
+			var varzMessage instrumentation.VarzMessage
+
+			JustBeforeEach(func() {
 				request, _ := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/varz", myIP, port), nil)
 				request.SetBasicAuth("the-username", "the-password")
 
 				response, err := httpClient.Do(request)
 				Ω(err).ShouldNot(HaveOccurred())
 				bytes, _ := ioutil.ReadAll(response.Body)
-				varzMessage := instrumentation.VarzMessage{}
+
+				varzMessage = instrumentation.VarzMessage{}
 
 				err = json.Unmarshal(bytes, &varzMessage)
 				Ω(err).ShouldNot(HaveOccurred())
-
-				return varzMessage
-			}
+			})
 
 			Context("when the read from the store succeeds", func() {
+
 				BeforeEach(func() {
 					bbs.GetAllRunOncesReturns.Models = []*models.RunOnce{
 						&models.RunOnce{State: models.RunOnceStatePending},
@@ -131,11 +133,17 @@ var _ = Describe("Metrics Server", func() {
 						&models.RunOnce{State: models.RunOnceStateResolving},
 						&models.RunOnce{State: models.RunOnceStateResolving},
 					}
+
+					bbs.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
+						{Name: models.ExecutorService, Id: "purple-elephants"},
+					}
+				})
+
+				It("reports the correct name", func() {
+					Ω(varzMessage.Name).Should(Equal("Runtime"))
 				})
 
 				It("returns the number of tasks in each state", func() {
-					varzMessage := getVarz()
-					Ω(varzMessage.Name).Should(Equal("Runtime"))
 					Ω(varzMessage.Contexts[0]).Should(Equal(instrumentation.Context{
 						Name: "Tasks",
 						Metrics: []instrumentation.Metric{
@@ -162,6 +170,15 @@ var _ = Describe("Metrics Server", func() {
 						},
 					}))
 				})
+
+				It("returns the number of registered services by service type", func() {
+					Ω(varzMessage.Contexts[1]).Should(Equal(instrumentation.Context{
+						Name: "ServiceRegistrations",
+						Metrics: []instrumentation.Metric{
+							{Name: "Executor", Value: float64(1)},
+						},
+					}))
+				})
 			})
 
 			Context("when there is an error reading from the store", func() {
@@ -170,7 +187,6 @@ var _ = Describe("Metrics Server", func() {
 				})
 
 				It("reports -1 for all of the task counts", func() {
-					varzMessage := getVarz()
 					Ω(varzMessage.Contexts[0]).Should(Equal(instrumentation.Context{
 						Name: "Tasks",
 						Metrics: []instrumentation.Metric{
