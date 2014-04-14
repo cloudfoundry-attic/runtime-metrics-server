@@ -135,7 +135,7 @@ var _ = Describe("Metrics Server", func() {
 					}
 
 					bbs.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
-						{Name: models.ExecutorService, Id: "purple-elephants"},
+						{Name: models.ExecutorServiceName, Id: "purple-elephants"},
 					}
 				})
 
@@ -176,6 +176,7 @@ var _ = Describe("Metrics Server", func() {
 						Name: "ServiceRegistrations",
 						Metrics: []instrumentation.Metric{
 							{Name: "Executor", Value: float64(1)},
+							{Name: "FileServer", Value: float64(0)},
 						},
 					}))
 				})

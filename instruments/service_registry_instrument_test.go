@@ -20,57 +20,61 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 	})
 
 	Describe("Emit", func() {
+		var context instrumentation.Context
 
-		Context("when the are executors", func() {
-			var expectedMetric = instrumentation.Metric{
-				Name:  "Executor",
-				Value: 2,
-			}
+		JustBeforeEach(func() {
+			context = instrument.Emit()
+		})
 
+		Context("when the are services", func() {
 			BeforeEach(func() {
 				fakeBBS.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
-					{Name: models.ExecutorService, Id: "guid-0"},
-					{Name: models.ExecutorService, Id: "guid-1"},
+					{Name: models.ExecutorServiceName, Id: "guid-0"},
+					{Name: models.ExecutorServiceName, Id: "guid-1"},
+					{Name: models.FileServerServiceName, Id: "guid-0", Location: "http://example.com"},
 				}
 			})
-			It("should emit the number of executors", func() {
-				context := instrument.Emit()
+
+			It("should have a name", func() {
 				Ω(context.Name).Should(Equal("ServiceRegistrations"))
-				Ω(context.Metrics).Should(ContainElement(expectedMetric))
+			})
+
+			It("should emit the number of executors", func() {
+				Ω(context.Name).Should(Equal("ServiceRegistrations"))
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "Executor", Value: 2}))
+			})
+
+			It("should emit the number of file servers", func() {
+				Ω(context.Name).Should(Equal("ServiceRegistrations"))
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "FileServer", Value: 1}))
 			})
 		})
 
-		Context("when there are no executors", func() {
-			var expectedMetric = instrumentation.Metric{
-				Name:  "Executor",
-				Value: 0,
-			}
-
+		Context("when there are no services", func() {
 			BeforeEach(func() {
 				fakeBBS.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{}
 			})
 
-			It("should emit 0", func() {
-				context := instrument.Emit()
-				Ω(context.Name).Should(Equal("ServiceRegistrations"))
-				Ω(context.Metrics).Should(ContainElement(expectedMetric))
+			It("should emit 0 executors", func() {
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "Executor", Value: 0}))
+			})
+
+			It("should emit 0 file servers", func() {
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "FileServer", Value: 0}))
 			})
 		})
 
 		Context("when etcd returns an error ", func() {
-			var expectedMetric = instrumentation.Metric{
-				Name:  "Executor",
-				Value: -1,
-			}
-
 			BeforeEach(func() {
 				fakeBBS.GetServiceRegistrationsReturns.Err = errors.New("pur[l;e")
 			})
 
-			It("should emit -1", func() {
-				context := instrument.Emit()
-				Ω(context.Name).Should(Equal("ServiceRegistrations"))
-				Ω(context.Metrics).Should(ContainElement(expectedMetric))
+			It("should emit -1 executors", func() {
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "Executor", Value: -1}))
+			})
+
+			It("should emit 0 file servers", func() {
+				Ω(context.Metrics).Should(ContainElement(instrumentation.Metric{Name: "FileServer", Value: -1}))
 			})
 		})
 

@@ -3,7 +3,13 @@ package instruments
 import (
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
+
+var serviceNames = []string{
+	models.ExecutorServiceName,
+	models.FileServerServiceName,
+}
 
 type serviceRegistryInstrument struct {
 	bbs bbs.MetricsBBS
@@ -14,22 +20,26 @@ func NewServiceRegistryInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Ins
 }
 
 func (t *serviceRegistryInstrument) Emit() instrumentation.Context {
+	context := instrumentation.Context{
+		Name: "ServiceRegistrations",
+	}
 
-	var numExecutors int
 	registrations, err := t.bbs.GetServiceRegistrations()
 	if err != nil {
-		numExecutors = -1
+		for _, serviceName := range serviceNames {
+			context.Metrics = append(context.Metrics, instrumentation.Metric{
+				Name:  serviceName,
+				Value: -1,
+			})
+		}
 	} else {
-		numExecutors = len(registrations.ExecutorRegistrations())
+		for _, serviceName := range serviceNames {
+			context.Metrics = append(context.Metrics, instrumentation.Metric{
+				Name:  serviceName,
+				Value: len(registrations.FilterByName(serviceName)),
+			})
+		}
 	}
 
-	return instrumentation.Context{
-		Name: "ServiceRegistrations",
-		Metrics: []instrumentation.Metric{
-			{
-				Name:  "Executor",
-				Value: numExecutors,
-			},
-		},
-	}
+	return context
 }
