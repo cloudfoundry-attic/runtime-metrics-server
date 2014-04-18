@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
@@ -62,6 +63,12 @@ var natsPassword = flag.String(
 	"Password for nats user",
 )
 
+var syslogName = flag.String(
+	"syslogName",
+	"",
+	"syslog program name",
+)
+
 func main() {
 	flag.Parse()
 
@@ -101,6 +108,17 @@ func main() {
 	}
 
 	bbs := bbs.New(etcdAdapter, timeprovider.NewTimeProvider())
+
+	stenoConfig := steno.Config{
+		Level: steno.LOG_INFO,
+		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
+	}
+
+	if *syslogName != "" {
+		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
+	}
+
+	steno.Init(&stenoConfig)
 
 	server := metrics_server.New(
 		natsClient,
