@@ -24,8 +24,8 @@ func (t *taskInstrument) Emit() instrumentation.Context {
 	allTasks, err := t.bbs.GetAllTasks()
 
 	if err == nil {
-		for _, runOnce := range allTasks {
-			switch runOnce.State {
+		for _, task := range allTasks {
+			switch task.State {
 			case models.TaskStatePending:
 				pendingCount++
 			case models.TaskStateClaimed:
