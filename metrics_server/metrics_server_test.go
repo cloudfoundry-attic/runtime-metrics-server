@@ -115,23 +115,23 @@ var _ = Describe("Metrics Server", func() {
 			Context("when the read from the store succeeds", func() {
 
 				BeforeEach(func() {
-					bbs.GetAllRunOncesReturns.Models = []*models.RunOnce{
-						&models.RunOnce{State: models.RunOnceStatePending},
-						&models.RunOnce{State: models.RunOnceStatePending},
-						&models.RunOnce{State: models.RunOnceStatePending},
+					bbs.GetAllTasksReturns.Models = []*models.Task{
+						&models.Task{State: models.TaskStatePending},
+						&models.Task{State: models.TaskStatePending},
+						&models.Task{State: models.TaskStatePending},
 
-						&models.RunOnce{State: models.RunOnceStateClaimed},
-						&models.RunOnce{State: models.RunOnceStateClaimed},
+						&models.Task{State: models.TaskStateClaimed},
+						&models.Task{State: models.TaskStateClaimed},
 
-						&models.RunOnce{State: models.RunOnceStateRunning},
+						&models.Task{State: models.TaskStateRunning},
 
-						&models.RunOnce{State: models.RunOnceStateCompleted},
-						&models.RunOnce{State: models.RunOnceStateCompleted},
-						&models.RunOnce{State: models.RunOnceStateCompleted},
-						&models.RunOnce{State: models.RunOnceStateCompleted},
+						&models.Task{State: models.TaskStateCompleted},
+						&models.Task{State: models.TaskStateCompleted},
+						&models.Task{State: models.TaskStateCompleted},
+						&models.Task{State: models.TaskStateCompleted},
 
-						&models.RunOnce{State: models.RunOnceStateResolving},
-						&models.RunOnce{State: models.RunOnceStateResolving},
+						&models.Task{State: models.TaskStateResolving},
+						&models.Task{State: models.TaskStateResolving},
 					}
 
 					bbs.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
@@ -184,7 +184,7 @@ var _ = Describe("Metrics Server", func() {
 
 			Context("when there is an error reading from the store", func() {
 				BeforeEach(func() {
-					bbs.GetAllRunOncesReturns.Err = errors.New("Doesn't work")
+					bbs.GetAllTasksReturns.Err = errors.New("Doesn't work")
 				})
 
 				It("reports -1 for all of the task counts", func() {

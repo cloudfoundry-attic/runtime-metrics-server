@@ -21,20 +21,20 @@ func (t *taskInstrument) Emit() instrumentation.Context {
 	completedCount := 0
 	resolvingCount := 0
 
-	allRunOnces, err := t.bbs.GetAllRunOnces()
+	allTasks, err := t.bbs.GetAllTasks()
 
 	if err == nil {
-		for _, runOnce := range allRunOnces {
+		for _, runOnce := range allTasks {
 			switch runOnce.State {
-			case models.RunOnceStatePending:
+			case models.TaskStatePending:
 				pendingCount++
-			case models.RunOnceStateClaimed:
+			case models.TaskStateClaimed:
 				claimedCount++
-			case models.RunOnceStateRunning:
+			case models.TaskStateRunning:
 				runningCount++
-			case models.RunOnceStateCompleted:
+			case models.TaskStateCompleted:
 				completedCount++
-			case models.RunOnceStateResolving:
+			case models.TaskStateResolving:
 				resolvingCount++
 			}
 		}
