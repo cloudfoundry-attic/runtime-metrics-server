@@ -46,7 +46,7 @@ func (server *MetricsServer) Listen() error {
 	var err error
 	server.component, err = metricz.NewComponent(
 		server.logger,
-		"Runtime",
+		"runtime",
 		server.config.Index,
 		health_check.New(),
 		server.config.Port,

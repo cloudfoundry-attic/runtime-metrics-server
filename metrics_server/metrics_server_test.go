@@ -81,7 +81,7 @@ var _ = Describe("Metrics Server", func() {
 			response := make(map[string]interface{})
 			json.Unmarshal(payload, &response)
 
-			Ω(response["type"]).Should(Equal("Runtime"))
+			Ω(response["type"]).Should(Equal("runtime"))
 
 			Ω(strings.HasSuffix(response["host"].(string), fmt.Sprintf(":%d", port))).Should(BeTrue())
 
@@ -140,7 +140,7 @@ var _ = Describe("Metrics Server", func() {
 				})
 
 				It("reports the correct name", func() {
-					Ω(varzMessage.Name).Should(Equal("Runtime"))
+					Ω(varzMessage.Name).Should(Equal("runtime"))
 				})
 
 				It("returns the number of tasks in each state", func() {
