@@ -115,23 +115,23 @@ var _ = Describe("Metrics Server", func() {
 			Context("when the read from the store succeeds", func() {
 
 				BeforeEach(func() {
-					bbs.GetAllTasksReturns.Models = []*models.Task{
-						&models.Task{State: models.TaskStatePending},
-						&models.Task{State: models.TaskStatePending},
-						&models.Task{State: models.TaskStatePending},
+					bbs.GetAllTasksReturns.Models = []models.Task{
+						models.Task{State: models.TaskStatePending},
+						models.Task{State: models.TaskStatePending},
+						models.Task{State: models.TaskStatePending},
 
-						&models.Task{State: models.TaskStateClaimed},
-						&models.Task{State: models.TaskStateClaimed},
+						models.Task{State: models.TaskStateClaimed},
+						models.Task{State: models.TaskStateClaimed},
 
-						&models.Task{State: models.TaskStateRunning},
+						models.Task{State: models.TaskStateRunning},
 
-						&models.Task{State: models.TaskStateCompleted},
-						&models.Task{State: models.TaskStateCompleted},
-						&models.Task{State: models.TaskStateCompleted},
-						&models.Task{State: models.TaskStateCompleted},
+						models.Task{State: models.TaskStateCompleted},
+						models.Task{State: models.TaskStateCompleted},
+						models.Task{State: models.TaskStateCompleted},
+						models.Task{State: models.TaskStateCompleted},
 
-						&models.Task{State: models.TaskStateResolving},
-						&models.Task{State: models.TaskStateResolving},
+						models.Task{State: models.TaskStateResolving},
+						models.Task{State: models.TaskStateResolving},
 					}
 
 					bbs.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
