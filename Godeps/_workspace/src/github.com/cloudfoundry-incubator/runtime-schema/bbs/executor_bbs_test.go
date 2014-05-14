@@ -1,9 +1,10 @@
 package bbs_test
 
 import (
-	"github.com/cloudfoundry/storeadapter/test_helpers"
 	"path"
 	"time"
+
+	"github.com/cloudfoundry/storeadapter/test_helpers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,84 +14,71 @@ import (
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	. "github.com/cloudfoundry/storeadapter/storenodematchers"
 )
 
 var _ = Describe("Executor BBS", func() {
 	var bbs *BBS
-	var task *models.Task
+	var task models.Task
 	var timeToClaim time.Duration
 	var presence Presence
 	var timeProvider *faketimeprovider.FakeTimeProvider
-
+	var lrp models.TransitionalLongRunningProcess
+	var err error
 	BeforeEach(func() {
+		err = nil
 		timeToClaim = 30 * time.Second
 		timeProvider = faketimeprovider.New(time.Unix(1238, 0))
-		bbs = New(store, timeProvider)
-		task = &models.Task{
+		bbs = New(etcdClient, timeProvider)
+		task = models.Task{
 			Guid: "some-guid",
 		}
+		lrp = models.TransitionalLongRunningProcess{
+			Guid: "the-lrp-guid",
+		}
 	})
-
-	itRetriesUntilStoreComesBack := func(action func() error) {
-		It("should keep trying until the store comes back", func(done Done) {
-			etcdRunner.GoAway()
-
-			runResult := make(chan error)
-			go func() {
-				err := action()
-				runResult <- err
-			}()
-
-			time.Sleep(200 * time.Millisecond)
-
-			etcdRunner.ComeBack()
-
-			Ω(<-runResult).ShouldNot(HaveOccurred())
-
-			close(done)
-		}, 5)
-	}
 
 	Describe("ClaimTask", func() {
 		Context("when claiming a pending Task", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("puts the Task in the claim state", func() {
-				err := bbs.ClaimTask(task, "executor-ID")
+				task, err = bbs.ClaimTask(task, "executor-ID")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.State).Should(Equal(models.TaskStateClaimed))
 				Ω(task.ExecutorID).Should(Equal("executor-ID"))
 
-				node, err := store.Get("/v1/task/some-guid")
+				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
 			})
 
 			It("should bump UpdatedAt", func() {
-				err := bbs.ClaimTask(task, "executor-ID")
+				task, err = bbs.ClaimTask(task, "executor-ID")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.UpdatedAt).Should(Equal(timeProvider.Time().UnixNano()))
 			})
 
-			Context("when the store is out of commission", func() {
+			Context("when the etcdClient is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.ClaimTask(task, "executor-ID")
+					_, err := bbs.ClaimTask(task, "executor-ID")
+					return err
 				})
 			})
 		})
 
 		Context("when claiming a Task that is not in the pending state", func() {
 			It("returns an error", func() {
-				err := bbs.ClaimTask(task, "executor-ID")
+				task, err = bbs.ClaimTask(task, "executor-ID")
 				Ω(err).Should(HaveOccurred())
 			})
 		})
@@ -99,23 +87,23 @@ var _ = Describe("Executor BBS", func() {
 	Describe("StartTask", func() {
 		Context("when starting a claimed Task", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-ID")
+				task, err = bbs.ClaimTask(task, "executor-ID")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("sets the state to running", func() {
-				err := bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.State).Should(Equal(models.TaskStateRunning))
 				Ω(task.ContainerHandle).Should(Equal("container-handle"))
 
-				node, err := store.Get("/v1/task/some-guid")
+				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
@@ -124,7 +112,7 @@ var _ = Describe("Executor BBS", func() {
 			It("should bump UpdatedAt", func() {
 				timeProvider.IncrementBySeconds(1)
 
-				err := bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.UpdatedAt).Should(Equal(timeProvider.Time().UnixNano()))
@@ -132,14 +120,15 @@ var _ = Describe("Executor BBS", func() {
 
 			Context("when the store is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.StartTask(task, "container-handle")
+					_, err := bbs.StartTask(task, "container-handle")
+					return err
 				})
 			})
 		})
 
 		Context("When starting a Task that is not in the claimed state", func() {
 			It("returns an error", func() {
-				err := bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).Should(HaveOccurred())
 			})
 		})
@@ -148,26 +137,26 @@ var _ = Describe("Executor BBS", func() {
 	Describe("CompleteTask", func() {
 		Context("when completing a running Task", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-ID")
+				task, err = bbs.ClaimTask(task, "executor-ID")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("sets the Task in the completed state", func() {
-				err := bbs.CompleteTask(task, true, "because i said so", "a result")
+				task, err = bbs.CompleteTask(task, true, "because i said so", "a result")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.Failed).Should(BeTrue())
 				Ω(task.FailureReason).Should(Equal("because i said so"))
 
-				node, err := store.Get("/v1/task/some-guid")
+				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
@@ -176,7 +165,7 @@ var _ = Describe("Executor BBS", func() {
 			It("should bump UpdatedAt", func() {
 				timeProvider.IncrementBySeconds(1)
 
-				err := bbs.CompleteTask(task, true, "because i said so", "a result")
+				task, err = bbs.CompleteTask(task, true, "because i said so", "a result")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.UpdatedAt).Should(Equal(timeProvider.Time().UnixNano()))
@@ -184,14 +173,15 @@ var _ = Describe("Executor BBS", func() {
 
 			Context("when the store is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.CompleteTask(task, false, "", "a result")
+					_, err := bbs.CompleteTask(task, false, "", "a result")
+					return err
 				})
 			})
 		})
 
 		Context("When completing a Task that is not in the running state", func() {
 			It("returns an error", func() {
-				err := bbs.CompleteTask(task, true, "because i said so", "a result")
+				_, err := bbs.CompleteTask(task, true, "because i said so", "a result")
 				Ω(err).Should(HaveOccurred())
 			})
 		})
@@ -224,7 +214,7 @@ var _ = Describe("Executor BBS", func() {
 		It("should put /executor/EXECUTOR_ID in the store with a TTL", func() {
 			Eventually(reporter.Locked).Should(BeTrue())
 
-			node, err := store.Get("/v1/executor/" + executorId)
+			node, err := etcdClient.Get("/v1/executor/" + executorId)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(node.Key).Should(Equal("/v1/executor/" + executorId))
 			Ω(node.TTL).Should(Equal(uint64(interval.Seconds()))) // move to config one day
@@ -263,7 +253,7 @@ var _ = Describe("Executor BBS", func() {
 
 	Describe("WatchForDesiredTask", func() {
 		var (
-			events <-chan *models.Task
+			events <-chan models.Task
 			stop   chan<- bool
 			errors <-chan error
 		)
@@ -273,7 +263,7 @@ var _ = Describe("Executor BBS", func() {
 		})
 
 		It("should send an event down the pipe for creates", func(done Done) {
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(task))
@@ -282,14 +272,14 @@ var _ = Describe("Executor BBS", func() {
 		})
 
 		It("should send an event down the pipe for sets", func(done Done) {
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			e := <-events
 
 			Expect(e).To(Equal(task))
 
-			err = bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(task))
@@ -298,18 +288,18 @@ var _ = Describe("Executor BBS", func() {
 		})
 
 		It("should not send an event down the pipe for deletes", func(done Done) {
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(task))
 
-			err = bbs.ResolveTask(task)
+			task, err = bbs.ResolveTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			otherTask := task
 			otherTask.Guid = task.Guid + "1"
 
-			err = bbs.DesireTask(otherTask)
+			otherTask, err = bbs.DesireTask(otherTask)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(otherTask))
@@ -320,7 +310,7 @@ var _ = Describe("Executor BBS", func() {
 		It("closes the events and errors channel when told to stop", func(done Done) {
 			stop <- true
 
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(events).Should(BeClosed())
@@ -331,8 +321,8 @@ var _ = Describe("Executor BBS", func() {
 	})
 
 	Describe("ConvergeTask", func() {
-		var desiredEvents <-chan *models.Task
-		var completedEvents <-chan *models.Task
+		var desiredEvents <-chan models.Task
+		var completedEvents <-chan models.Task
 
 		commenceWatching := func() {
 			desiredEvents, _, _ = bbs.WatchForDesiredTask()
@@ -343,25 +333,25 @@ var _ = Describe("Executor BBS", func() {
 			It("should delete it", func() {
 				nodeKey := path.Join(TaskSchemaRoot, "some-guid")
 
-				err := store.Create(storeadapter.StoreNode{
+				err := etcdClient.Create(storeadapter.StoreNode{
 					Key:   nodeKey,
 					Value: []byte("ß"),
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				_, err = store.Get(nodeKey)
+				_, err = etcdClient.Get(nodeKey)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				bbs.ConvergeTask(timeToClaim)
 
-				_, err = store.Get(nodeKey)
+				_, err = etcdClient.Get(nodeKey)
 				Ω(err).Should(Equal(storeadapter.ErrorKeyNotFound))
 			})
 		})
 
 		Context("when a Task is pending", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -370,7 +360,7 @@ var _ = Describe("Executor BBS", func() {
 				commenceWatching()
 				bbs.ConvergeTask(timeToClaim)
 
-				var noticedOnce *models.Task
+				var noticedOnce models.Task
 				Eventually(desiredEvents).Should(Receive(&noticedOnce))
 
 				task.UpdatedAt = timeProvider.Time().UnixNano()
@@ -385,7 +375,7 @@ var _ = Describe("Executor BBS", func() {
 
 					Consistently(desiredEvents).ShouldNot(Receive())
 
-					var noticedOnce *models.Task
+					var noticedOnce models.Task
 					Eventually(completedEvents).Should(Receive(&noticedOnce))
 
 					Ω(noticedOnce.Failed).Should(Equal(true))
@@ -396,10 +386,10 @@ var _ = Describe("Executor BBS", func() {
 
 		Context("when a Task is claimed", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-id")
+				task, err = bbs.ClaimTask(task, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var status <-chan bool
@@ -430,7 +420,7 @@ var _ = Describe("Executor BBS", func() {
 
 					Consistently(completedEvents).ShouldNot(Receive())
 
-					var noticedOnce *models.Task
+					var noticedOnce models.Task
 					Eventually(desiredEvents).Should(Receive(&noticedOnce))
 
 					task.State = models.TaskStatePending
@@ -453,7 +443,7 @@ var _ = Describe("Executor BBS", func() {
 
 					Consistently(desiredEvents).ShouldNot(Receive())
 
-					var noticedOnce *models.Task
+					var noticedOnce models.Task
 					Eventually(completedEvents).Should(Receive(&noticedOnce))
 
 					Ω(noticedOnce.Failed).Should(Equal(true))
@@ -465,13 +455,13 @@ var _ = Describe("Executor BBS", func() {
 
 		Context("when a Task is running", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-id")
+				task, err = bbs.ClaimTask(task, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var status <-chan bool
@@ -506,7 +496,7 @@ var _ = Describe("Executor BBS", func() {
 
 					Consistently(desiredEvents).ShouldNot(Receive())
 
-					var noticedOnce *models.Task
+					var noticedOnce models.Task
 					Eventually(completedEvents).Should(Receive(&noticedOnce))
 
 					Ω(noticedOnce.Failed).Should(Equal(true))
@@ -518,16 +508,16 @@ var _ = Describe("Executor BBS", func() {
 
 		Context("when a Task is completed", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-id")
+				task, err = bbs.ClaimTask(task, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.CompleteTask(task, true, "'cause I said so", "a magical result")
+				task, err = bbs.CompleteTask(task, true, "'cause I said so", "a magical result")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -539,7 +529,7 @@ var _ = Describe("Executor BBS", func() {
 
 				Consistently(desiredEvents).ShouldNot(Receive())
 
-				var noticedOnce *models.Task
+				var noticedOnce models.Task
 				Eventually(completedEvents).Should(Receive(&noticedOnce))
 
 				Ω(noticedOnce.Failed).Should(Equal(true))
@@ -551,19 +541,19 @@ var _ = Describe("Executor BBS", func() {
 
 		Context("when a Task is resolving", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ClaimTask(task, "executor-id")
+				task, err = bbs.ClaimTask(task, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.StartTask(task, "container-handle")
+				task, err = bbs.StartTask(task, "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.CompleteTask(task, true, "'cause I said so", "a result")
+				task, err = bbs.CompleteTask(task, true, "'cause I said so", "a result")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = bbs.ResolvingTask(task)
+				task, err = bbs.ResolvingTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -583,7 +573,7 @@ var _ = Describe("Executor BBS", func() {
 
 					bbs.ConvergeTask(timeToClaim)
 
-					var noticedOnce *models.Task
+					var noticedOnce models.Task
 					Eventually(completedEvents).Should(Receive(&noticedOnce))
 
 					task.State = models.TaskStateCompleted
@@ -674,6 +664,100 @@ var _ = Describe("Executor BBS", func() {
 				release2 <- nil
 
 				Eventually(reporter2.Reporting).Should(BeFalse())
+			})
+		})
+	})
+
+	Describe("WatchForDesiredTransitionalLongRunningProcesses", func() {
+		var (
+			events  <-chan models.TransitionalLongRunningProcess
+			stop    chan<- bool
+			errors  <-chan error
+			stopped bool
+		)
+
+		BeforeEach(func() {
+			events, stop, errors = bbs.WatchForDesiredTransitionalLongRunningProcess()
+		})
+
+		AfterEach(func() {
+			if !stopped {
+				stop <- true
+			}
+		})
+
+		It("sends an event down the pipe for creates", func() {
+			err := bbs.DesireTransitionalLongRunningProcess(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lrp.State = models.TransitionalLRPStateDesired
+			Eventually(events).Should(Receive(Equal(lrp)))
+		})
+
+		It("sends an event down the pipe for updates", func() {
+			err := bbs.DesireTransitionalLongRunningProcess(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lrp.State = models.TransitionalLRPStateDesired
+			Eventually(events).Should(Receive(Equal(lrp)))
+
+			err = bbs.DesireTransitionalLongRunningProcess(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(events).Should(Receive(Equal(lrp)))
+		})
+
+		It("closes the events and errors channel when told to stop", func() {
+			stop <- true
+			stopped = true
+
+			err := bbs.DesireTransitionalLongRunningProcess(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(events).Should(BeClosed())
+			Ω(errors).Should(BeClosed())
+		})
+	})
+
+	Describe("StartTransitionalLongRunningProcess", func() {
+		BeforeEach(func() {
+			err := bbs.DesireTransitionalLongRunningProcess(lrp)
+			lrp.State = models.TransitionalLRPStateDesired
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		Context("when starting a desired LRP", func() {
+			It("sets the state to running", func() {
+				err := bbs.StartTransitionalLongRunningProcess(lrp)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				expectedLrp := lrp
+				expectedLrp.State = models.TransitionalLRPStateRunning
+
+				node, err := etcdClient.Get("/v1/transitional_lrp/the-lrp-guid")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
+					Key:   "/v1/transitional_lrp/the-lrp-guid",
+					Value: expectedLrp.ToJSON(),
+				}))
+			})
+
+			Context("when the store is out of commission", func() {
+				itRetriesUntilStoreComesBack(func() error {
+					return bbs.StartTransitionalLongRunningProcess(lrp)
+				})
+			})
+		})
+
+		Context("When starting an LRP that is not in the desired state", func() {
+			BeforeEach(func() {
+				err := bbs.StartTransitionalLongRunningProcess(lrp)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				err := bbs.StartTransitionalLongRunningProcess(lrp)
+				Ω(err).Should(HaveOccurred())
 			})
 		})
 	})

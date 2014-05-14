@@ -9,9 +9,10 @@ import (
 var InvalidActionConversion = errors.New("Invalid Action Conversion")
 
 type DownloadAction struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Extract bool   `json:"extract"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Extract  bool   `json:"extract"`
+	CacheKey string `json:"cache_key"`
 }
 
 type UploadAction struct {
@@ -21,9 +22,14 @@ type UploadAction struct {
 }
 
 type RunAction struct {
-	Script  string                `json:"script"`
-	Env     []EnvironmentVariable `json:"env"`
-	Timeout time.Duration         `json:"timeout"`
+	Script         string                `json:"script"`
+	Env            []EnvironmentVariable `json:"env"`
+	Timeout        time.Duration         `json:"timeout"`
+	ResourceLimits ResourceLimits        `json:"resource_limits"`
+}
+
+type ResourceLimits struct {
+	Nofile *uint64 `json:"nofile,omitempty"`
 }
 
 type FetchResultAction struct {

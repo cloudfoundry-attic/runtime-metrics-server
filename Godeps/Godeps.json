@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "3e6bfd720a7dc6d228d3bed6e13f9045616176e2"
+			"Rev": "2a04d598799a88c346168cbb0cc07867609294ae"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "3e6bfd720a7dc6d228d3bed6e13f9045616176e2"
+			"Rev": "2a04d598799a88c346168cbb0cc07867609294ae"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -24,15 +24,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
+			"Rev": "21adc866d245fff747352415cc036b5ec3c3d4f5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
+			"Rev": "21adc866d245fff747352415cc036b5ec3c3d4f5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/cfcomponent/localip",
@@ -40,16 +36,16 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "75297e7f1b7c70951bb78c8122bc266288870829"
+			"Rev": "c21b707184aa2b2b4a8c8a25e90bc36011dd147d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "8bf15e48f3abf6db1765ff908ee678a6f347ce0a"
+			"Rev": "2c197cfdcd587274614ab63fef96bbaaa1c01f10"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-96-g1e26d8e",
-			"Rev": "1e26d8ee84cf9b1000d2af8acfb45b2521f49be5"
+			"Comment": "v0.2.0-rc1-100-g1014044",
+			"Rev": "1014044eff94a4931724969b68867a0ee05beabc"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -57,15 +53,15 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "462cb7e31b222093d2fd2f4f0cbbce324f6ab3be"
+			"Rev": "51ddbbc2ace9f9ad4cf06ba63442ea2ef2019837"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "426c03a406ae6e4ffb9b65528d62439831d7c901"
+			"Rev": "f5533d435ebfcf4fa0463202dc0e966b983618b8"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "215c451d78ba1382cbccb2736c280c60a11b4b86"
+			"Rev": "7949d8f2b06890d93ca31d3056de240b9d7c3bd5"
 		}
 	]
 }

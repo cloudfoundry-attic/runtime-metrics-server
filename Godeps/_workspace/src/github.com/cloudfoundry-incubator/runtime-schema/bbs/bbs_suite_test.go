@@ -1,13 +1,15 @@
 package bbs_test
 
 import (
+	"os"
+	"os/signal"
+	"testing"
+	"time"
+
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/onsi/ginkgo/config"
-	"os"
-	"os/signal"
-	"testing"
 
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -15,7 +17,7 @@ import (
 )
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var store storeadapter.StoreAdapter
+var etcdClient storeadapter.StoreAdapter
 
 func TestBBS(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -26,7 +28,7 @@ func TestBBS(t *testing.T) {
 
 	etcdRunner.Start()
 
-	store = etcdRunner.Adapter()
+	etcdClient = etcdRunner.Adapter()
 
 	RunSpecs(t, "BBS Suite")
 
@@ -59,4 +61,24 @@ func registerSignalHandler() {
 			os.Exit(0)
 		}
 	}()
+}
+
+func itRetriesUntilStoreComesBack(action func() error) {
+	It("should keep trying until the store comes back", func(done Done) {
+		etcdRunner.GoAway()
+
+		runResult := make(chan error)
+		go func() {
+			err := action()
+			runResult <- err
+		}()
+
+		time.Sleep(200 * time.Millisecond)
+
+		etcdRunner.ComeBack()
+
+		Ω(<-runResult).ShouldNot(HaveOccurred())
+
+		close(done)
+	}, 5)
 }

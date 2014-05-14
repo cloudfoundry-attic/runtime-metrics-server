@@ -55,14 +55,16 @@ var _ = Describe("ExecutorAction", func() {
 				"args": {
 					"from": "web_location",
 					"to": "local_location",
+					"cache_key": "elephant",
 					"extract": true
 				}
 			}`,
 			ExecutorAction{
 				Action: DownloadAction{
-					From:    "web_location",
-					To:      "local_location",
-					Extract: true,
+					From:     "web_location",
+					To:       "local_location",
+					Extract:  true,
+					CacheKey: "elephant",
 				},
 			},
 		)
@@ -98,7 +100,8 @@ var _ = Describe("ExecutorAction", func() {
 					"env": [
 						{"key":"FOO", "value":"1"},
 						{"key":"BAR", "value":"2"}
-					]
+					],
+					"resource_limits":{}
 				}
 			}`,
 			ExecutorAction{
@@ -143,7 +146,8 @@ var _ = Describe("ExecutorAction", func() {
 						"args": {
 							"script": "echo",
 							"timeout": 0,
-							"env": null
+							"env": null,
+							"resource_limits":{}
 						}
 					}
 				}
@@ -167,7 +171,8 @@ var _ = Describe("ExecutorAction", func() {
 						"args": {
 							"script": "echo",
 							"timeout": 0,
-							"env": null
+							"env": null,
+							"resource_limits":{}
 						}
 					}
 				}

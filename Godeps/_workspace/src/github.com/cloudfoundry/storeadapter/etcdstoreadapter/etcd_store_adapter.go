@@ -123,6 +123,7 @@ func (adapter *ETCDStoreAdapter) Get(key string) (storeadapter.StoreNode, error)
 		Value: []byte(response.Node.Value),
 		Dir:   response.Node.Dir,
 		TTL:   uint64(response.Node.TTL),
+		Index: response.Node.ModifiedIndex,
 	}, nil
 }
 
@@ -151,7 +152,7 @@ func (adapter *ETCDStoreAdapter) ListRecursively(key string) (storeadapter.Store
 		return storeadapter.StoreNode{Key: key, Dir: true, Value: []byte{}, ChildNodes: []storeadapter.StoreNode{}}, nil
 	}
 
-	return adapter.makeStoreNode(*response.Node), nil
+	return adapter.makeStoreNode(response.Node), nil
 }
 
 func (adapter *ETCDStoreAdapter) Create(node storeadapter.StoreNode) error {
@@ -186,6 +187,24 @@ func (adapter *ETCDStoreAdapter) CompareAndSwap(oldNode storeadapter.StoreNode, 
 			newNode.TTL,
 			string(oldNode.Value),
 			0,
+		)
+
+		results <- err
+	})
+
+	return adapter.convertError(<-results)
+}
+
+func (adapter *ETCDStoreAdapter) CompareAndSwapByIndex(oldNodeIndex uint64, newNode storeadapter.StoreNode) error {
+	results := make(chan error, 1)
+
+	adapter.workerPool.ScheduleWork(func() {
+		_, err := adapter.client.CompareAndSwap(
+			newNode.Key,
+			string(newNode.Value),
+			newNode.TTL,
+			"",
+			oldNodeIndex,
 		)
 
 		results <- err
@@ -258,7 +277,7 @@ func (adapter *ETCDStoreAdapter) dispatchWatchEvents(key string, events chan<- s
 		response, err := adapter.client.Watch(key, index, true, nil, stop)
 		if err != nil {
 			if adapter.isEventIndexClearedError(err) {
-				index++
+				index = 0
 				continue
 			} else if err == etcd.ErrWatchStoppedByUser {
 				return
@@ -301,7 +320,7 @@ func (adapter *ETCDStoreAdapter) cancelInflightWatches() {
 	}
 }
 
-func (adapter *ETCDStoreAdapter) makeStoreNode(etcdNode etcd.Node) storeadapter.StoreNode {
+func (adapter *ETCDStoreAdapter) makeStoreNode(etcdNode *etcd.Node) storeadapter.StoreNode {
 	if etcdNode.Dir {
 		node := storeadapter.StoreNode{
 			Key:        etcdNode.Key,
@@ -321,6 +340,7 @@ func (adapter *ETCDStoreAdapter) makeStoreNode(etcdNode etcd.Node) storeadapter.
 			Key:   etcdNode.Key,
 			Value: []byte(etcdNode.Value),
 			TTL:   uint64(etcdNode.TTL),
+			Index: uint64(etcdNode.ModifiedIndex),
 		}
 	}
 }
@@ -349,7 +369,7 @@ func (adapter *ETCDStoreAdapter) makeWatchEvent(event *etcd.Response) storeadapt
 
 	return storeadapter.WatchEvent{
 		Type: eventType,
-		Node: adapter.makeStoreNode(*node),
+		Node: adapter.makeStoreNode(node),
 	}
 }
 

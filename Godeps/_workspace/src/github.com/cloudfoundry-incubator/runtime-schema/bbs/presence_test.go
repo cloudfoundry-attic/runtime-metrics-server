@@ -8,6 +8,7 @@ import (
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/storeadapter"
+	. "github.com/cloudfoundry/storeadapter/storenodematchers"
 	"github.com/cloudfoundry/storeadapter/test_helpers"
 )
 
@@ -23,7 +24,7 @@ var _ = Describe("Presence", func() {
 		key = "/v1/some-key"
 		value = "some-value"
 
-		presence = NewPresence(store, key, []byte(value))
+		presence = NewPresence(etcdClient, key, []byte(value))
 		interval = 1 * time.Second
 	})
 
@@ -44,9 +45,9 @@ var _ = Describe("Presence", func() {
 		It("should put /key/value in the store with a TTL", func() {
 			Eventually(reporter.Locked).Should(BeTrue())
 
-			node, err := store.Get(key)
+			node, err := etcdClient.Get(key)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(node).Should(Equal(storeadapter.StoreNode{
+			Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 				Key:   key,
 				Value: []byte(value),
 				TTL:   uint64(interval.Seconds()), // move to config one day
@@ -63,7 +64,7 @@ var _ = Describe("Presence", func() {
 			It("eventually reacquires it", func() {
 				Eventually(reporter.Locked).Should(BeTrue())
 
-				err := store.Delete(key)
+				err := etcdClient.Delete(key)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				time.Sleep(interval * 2)
@@ -80,7 +81,7 @@ var _ = Describe("Presence", func() {
 			presence.Remove()
 
 			Eventually(func() error {
-				_, err = store.Get(key)
+				_, err = etcdClient.Get(key)
 				return err
 			}, 2).Should(Equal(storeadapter.ErrorKeyNotFound))
 		})

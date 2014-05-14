@@ -15,50 +15,32 @@ import (
 
 var _ = Describe("Stager BBS", func() {
 	var bbs *BBS
-	var task *models.Task
+	var task models.Task
 	var timeProvider *faketimeprovider.FakeTimeProvider
+	var err error
 
 	BeforeEach(func() {
+		err = nil
 		timeProvider = faketimeprovider.New(time.Unix(1238, 0))
 
-		bbs = New(store, timeProvider)
-		task = &models.Task{
+		bbs = New(etcdClient, timeProvider)
+		task = models.Task{
 			Guid:            "some-guid",
 			ExecutorID:      "executor-id",
 			ContainerHandle: "container-handle",
 		}
 	})
 
-	itRetriesUntilStoreComesBack := func(action func() error) {
-		It("should keep trying until the store comes back", func(done Done) {
-			etcdRunner.GoAway()
-
-			runResult := make(chan error)
-			go func() {
-				err := action()
-				runResult <- err
-			}()
-
-			time.Sleep(200 * time.Millisecond)
-
-			etcdRunner.ComeBack()
-
-			Ω(<-runResult).ShouldNot(HaveOccurred())
-
-			close(done)
-		}, 5)
-	}
-
 	Describe("DesireTask", func() {
 		Context("when the Task has a CreatedAt time", func() {
 			BeforeEach(func() {
 				task.CreatedAt = 1234812
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("creates /task/<guid>", func() {
-				node, err := store.Get("/v1/task/some-guid")
+				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(node.Value).Should(Equal(task.ToJSON()))
 			})
@@ -66,7 +48,7 @@ var _ = Describe("Stager BBS", func() {
 
 		Context("when the Task has no CreatedAt time", func() {
 			BeforeEach(func() {
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -88,20 +70,21 @@ var _ = Describe("Stager BBS", func() {
 		Context("Common cases", func() {
 			BeforeEach(func() {
 				task.CreatedAt = 1234812
-				err := bbs.DesireTask(task)
+				task, err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			Context("when the Task is already pending", func() {
 				It("should happily overwrite the existing Task", func() {
-					err := bbs.DesireTask(task)
+					task, err = bbs.DesireTask(task)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 
 			Context("when the store is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.DesireTask(task)
+					_, err := bbs.DesireTask(task)
+					return err
 				})
 			})
 
@@ -116,28 +99,26 @@ var _ = Describe("Stager BBS", func() {
 
 	Describe("ResolvingTask", func() {
 		BeforeEach(func() {
-			var err error
-
-			err = bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ClaimTask(task, "some-executor-id")
+			task, err = bbs.ClaimTask(task, "some-executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.StartTask(task, "some-container-handle")
+			task, err = bbs.StartTask(task, "some-container-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.CompleteTask(task, true, "because i said so", "a result")
+			task, err = bbs.CompleteTask(task, true, "because i said so", "a result")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("swaps /task/<guid>'s state to resolving", func() {
-			err := bbs.ResolvingTask(task)
+			task, err = bbs.ResolvingTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(task.State).Should(Equal(models.TaskStateResolving))
 
-			node, err := store.Get("/v1/task/some-guid")
+			node, err := etcdClient.Get("/v1/task/some-guid")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(node.Value).Should(Equal(task.ToJSON()))
 		})
@@ -145,7 +126,7 @@ var _ = Describe("Stager BBS", func() {
 		It("should bump UpdatedAt", func() {
 			timeProvider.IncrementBySeconds(1)
 
-			err := bbs.ResolvingTask(task)
+			task, err = bbs.ResolvingTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(task.UpdatedAt).Should(Equal(timeProvider.Time().UnixNano()))
@@ -153,17 +134,17 @@ var _ = Describe("Stager BBS", func() {
 
 		Context("when the Task is already resolving", func() {
 			BeforeEach(func() {
-				err := bbs.ResolvingTask(task)
+				task, err = bbs.ResolvingTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("fails", func() {
-				err := bbs.ResolvingTask(task)
+				task, err = bbs.ResolvingTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(task.State).Should(Equal(models.TaskStateResolving))
 
-				node, err := store.Get("/v1/task/some-guid")
+				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(node.Value).Should(Equal(task.ToJSON()))
 			})
@@ -172,40 +153,41 @@ var _ = Describe("Stager BBS", func() {
 
 	Describe("ResolveTask", func() {
 		BeforeEach(func() {
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ClaimTask(task, "some-executor-id")
+			task, err = bbs.ClaimTask(task, "some-executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.StartTask(task, "some-container-handle")
+			task, err = bbs.StartTask(task, "some-container-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.CompleteTask(task, true, "because i said so", "a result")
+			task, err = bbs.CompleteTask(task, true, "because i said so", "a result")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ResolvingTask(task)
+			task, err = bbs.ResolvingTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should remove /task/<guid>", func() {
-			err := bbs.ResolveTask(task)
+			task, err = bbs.ResolveTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			_, err = store.Get("/v1/task/some-guid")
+			_, err = etcdClient.Get("/v1/task/some-guid")
 			Ω(err).Should(Equal(storeadapter.ErrorKeyNotFound))
 		})
 
 		Context("when the store is out of commission", func() {
 			itRetriesUntilStoreComesBack(func() error {
-				return bbs.ResolveTask(task)
+				_, err := bbs.ResolveTask(task)
+				return err
 			})
 		})
 	})
 
 	Describe("WatchForCompletedTask", func() {
 		var (
-			events <-chan *models.Task
+			events <-chan models.Task
 			stop   chan<- bool
 			errors <-chan error
 		)
@@ -213,13 +195,13 @@ var _ = Describe("Stager BBS", func() {
 		BeforeEach(func() {
 			events, stop, errors = bbs.WatchForCompletedTask()
 
-			err := bbs.DesireTask(task)
+			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ClaimTask(task, "executor-ID")
+			task, err = bbs.ClaimTask(task, "executor-ID")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.StartTask(task, "container-handle")
+			task, err = bbs.StartTask(task, "container-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -228,7 +210,7 @@ var _ = Describe("Stager BBS", func() {
 		})
 
 		It("should send an event down the pipe for completed run onces", func(done Done) {
-			err := bbs.CompleteTask(task, true, "a reason", "a result")
+			task, err = bbs.CompleteTask(task, true, "a reason", "a result")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(task))
@@ -237,15 +219,15 @@ var _ = Describe("Stager BBS", func() {
 		})
 
 		It("should not send an event down the pipe when resolved", func(done Done) {
-			err := bbs.CompleteTask(task, true, "a reason", "a result")
+			task, err = bbs.CompleteTask(task, true, "a reason", "a result")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Expect(<-events).To(Equal(task))
 
-			err = bbs.ResolvingTask(task)
+			task, err = bbs.ResolvingTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ResolveTask(task)
+			task, err = bbs.ResolveTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(events).ShouldNot(Receive())
@@ -256,7 +238,7 @@ var _ = Describe("Stager BBS", func() {
 		It("closes the events and errorschannel when told to stop", func(done Done) {
 			stop <- true
 
-			err := bbs.CompleteTask(task, true, "a reason", "a result")
+			task, err = bbs.CompleteTask(task, true, "a reason", "a result")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(events).Should(BeClosed())

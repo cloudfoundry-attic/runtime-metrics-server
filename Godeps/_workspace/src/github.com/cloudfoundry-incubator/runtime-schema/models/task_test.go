@@ -14,22 +14,26 @@ var _ = Describe("Task", func() {
 
 	taskPayload := `{
 		"guid":"some-guid",
-		"reply_to":"some-requester",
 		"stack":"some-stack",
 		"executor_id":"executor",
 		"actions":[
 			{
 				"action":"download",
-				"args":{"from":"old_location","to":"new_location","extract":true}
+				"args":{
+					"from":"old_location",
+					"to":"new_location",
+					"cache_key":"the-cache-key",
+					"extract":true
+				}
 			}
 		],
 		"container_handle":"17fgsafdfcvc",
 		"result": "turboencabulated",
 		"failed":true,
 		"failure_reason":"because i said so",
-		"file_descriptors":9001,
 		"memory_mb":256,
 		"disk_mb":1024,
+		"cpu_percent": 42.25,
 		"log": {
 			"guid": "123",
 			"source_name": "APP",
@@ -37,22 +41,23 @@ var _ = Describe("Task", func() {
 		},
 		"created_at": 1393371971000000000,
 		"updated_at": 1393371971000000010,
-		"state": 1
+		"state": 1,
+		"annotation": "[{\"anything\": \"you want!\"}]... dude"
 	}`
 
 	BeforeEach(func() {
 		index := 42
 
 		task = Task{
-			Guid:    "some-guid",
-			ReplyTo: "some-requester",
-			Stack:   "some-stack",
+			Guid:  "some-guid",
+			Stack: "some-stack",
 			Actions: []ExecutorAction{
 				{
 					Action: DownloadAction{
-						From:    "old_location",
-						To:      "new_location",
-						Extract: true,
+						From:     "old_location",
+						To:       "new_location",
+						CacheKey: "the-cache-key",
+						Extract:  true,
 					},
 				},
 			},
@@ -66,12 +71,13 @@ var _ = Describe("Task", func() {
 			Result:          "turboencabulated",
 			Failed:          true,
 			FailureReason:   "because i said so",
-			FileDescriptors: 9001,
 			MemoryMB:        256,
 			DiskMB:          1024,
+			CpuPercent:      42.25,
 			CreatedAt:       time.Date(2014, time.February, 25, 23, 46, 11, 00, time.UTC).UnixNano(),
 			UpdatedAt:       time.Date(2014, time.February, 25, 23, 46, 11, 10, time.UTC).UnixNano(),
 			State:           TaskStatePending,
+			Annotation:      `[{"anything": "you want!"}]... dude`,
 		}
 	})
 
