@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -107,7 +107,7 @@ func main() {
 		log.Fatalf("Error connecting to etcd: %s\n", err)
 	}
 
-	bbs := bbs.New(etcdAdapter, timeprovider.NewTimeProvider())
+	bbs := Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider())
 
 	stenoConfig := steno.Config{
 		Level: steno.LOG_INFO,
