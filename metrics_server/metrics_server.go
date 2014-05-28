@@ -1,6 +1,8 @@
 package metrics_server
 
 import (
+	"os"
+
 	"github.com/cloudfoundry-incubator/metricz"
 	"github.com/cloudfoundry-incubator/metricz/collector_registrar"
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
@@ -40,6 +42,45 @@ func New(
 	}
 }
 
+func (server *MetricsServer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	registrar := collector_registrar.New(server.natsClient)
+
+	var err error
+	server.component, err = metricz.NewComponent(
+		server.logger,
+		"runtime",
+		server.config.Index,
+		health_check.New(),
+		server.config.Port,
+		[]string{server.config.Username, server.config.Password},
+		[]instrumentation.Instrumentable{
+			instruments.NewTaskInstrument(server.bbs),
+			instruments.NewServiceRegistryInstrument(server.bbs),
+		},
+	)
+
+	err = registrar.RegisterWithCollector(server.component)
+	if err != nil {
+		return err
+	}
+
+	close(ready)
+
+	serverStopped := make(chan error)
+	go func() {
+		serverStopped <- server.component.StartMonitoringEndpoints()
+	}()
+
+	select {
+	case <-signals:
+		server.component.StopMonitoringEndpoints()
+		return nil
+	case err := <-serverStopped:
+		return err
+	}
+}
+
+/*
 func (server *MetricsServer) Listen() error {
 	registrar := collector_registrar.New(server.natsClient)
 
@@ -63,10 +104,9 @@ func (server *MetricsServer) Listen() error {
 	}
 
 	server.component.StartMonitoringEndpoints()
-
-	return nil
 }
 
 func (server *MetricsServer) Stop() {
 	server.component.StopMonitoringEndpoints()
 }
+*/

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"syscall"
 
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/metricz/localip"
@@ -19,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("Metrics Server", func() {
@@ -50,10 +52,11 @@ var _ = Describe("Metrics Server", func() {
 		}
 	})
 
-	Describe("Listen", func() {
+	Describe("Envoke", func() {
 		var (
 			payloadChan chan []byte
 			myIP        string
+			process     ifrit.Process
 		)
 
 		BeforeEach(func() {
@@ -66,14 +69,13 @@ var _ = Describe("Metrics Server", func() {
 				payloadChan <- msg.Payload
 			})
 
-			go func() {
-				err := server.Listen()
-				Ω(err).ShouldNot(HaveOccurred())
-			}()
+			process = ifrit.Envoke(server)
 		})
 
-		AfterEach(func() {
-			server.Stop()
+		AfterEach(func(done Done) {
+			process.Signal(syscall.SIGTERM)
+			<-process.Wait()
+			close(done)
 		})
 
 		It("announces to the collector with the right type, port, credentials and index", func(done Done) {
@@ -113,7 +115,6 @@ var _ = Describe("Metrics Server", func() {
 			})
 
 			Context("when the read from the store succeeds", func() {
-
 				BeforeEach(func() {
 					bbs.GetAllTasksReturns.Models = []models.Task{
 						models.Task{State: models.TaskStatePending},

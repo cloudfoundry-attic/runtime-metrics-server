@@ -13,6 +13,8 @@ import (
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/cloudfoundry/yagnats"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/sigmon"
 )
 
 var etcdCluster = flag.String(
@@ -72,6 +74,48 @@ var syslogName = flag.String(
 func main() {
 	flag.Parse()
 
+	logger := initializeLogger()
+	natsClient := initializeNatsClient(logger)
+	metricsBBS := initializeMetricsBBS(logger)
+
+	config := metrics_server.Config{
+		Port:     uint32(*port),
+		Username: *username,
+		Password: *password,
+		Index:    *index,
+	}
+
+	server := ifrit.Envoke(metrics_server.New(
+		natsClient,
+		metricsBBS,
+		logger,
+		config,
+	))
+
+	monitor := ifrit.Envoke(sigmon.New(server))
+
+	err := <-monitor.Wait()
+	if err != nil {
+		log.Fatal("runtime-metrics-server exited with error: %s", err)
+	}
+}
+
+func initializeLogger() *steno.Logger {
+	stenoConfig := steno.Config{
+		Level: steno.LOG_INFO,
+		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
+	}
+
+	if *syslogName != "" {
+		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
+	}
+
+	steno.Init(&stenoConfig)
+
+	return steno.NewLogger("runtime-metrics-server")
+}
+
+func initializeNatsClient(logger *steno.Logger) *yagnats.Client {
 	natsClient := yagnats.NewClient()
 
 	natsMembers := []yagnats.ConnectionProvider{}
@@ -88,44 +132,21 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatalf("Error connecting to NATS: %s\n", err)
+		logger.Fatalf("Error connecting to NATS: %s\n", err)
 	}
 
-	config := metrics_server.Config{
-		Port:     uint32(*port),
-		Username: *username,
-		Password: *password,
-		Index:    *index,
-	}
+	return natsClient
+}
 
+func initializeMetricsBBS(logger *steno.Logger) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
 
 	if err := etcdAdapter.Connect(); err != nil {
-		log.Fatalf("Error connecting to etcd: %s\n", err)
+		logger.Fatalf("Error connecting to etcd: %s\n", err)
 	}
 
-	bbs := Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider())
-
-	stenoConfig := steno.Config{
-		Level: steno.LOG_INFO,
-		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
-	}
-
-	if *syslogName != "" {
-		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
-	}
-
-	steno.Init(&stenoConfig)
-
-	server := metrics_server.New(
-		natsClient,
-		bbs,
-		steno.NewLogger("runtime-metrics-server"),
-		config,
-	)
-
-	log.Fatalln(server.Listen())
+	return Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider())
 }

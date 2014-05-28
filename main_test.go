@@ -73,6 +73,9 @@ var _ = Describe("Main", func() {
 
 		Eventually(func() error {
 			conn, err := net.Dial("tcp", reg.Host)
+			if err != nil {
+				return nil
+			}
 			defer conn.Close()
 			return err
 		}).ShouldNot(HaveOccurred())
