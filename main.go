@@ -148,5 +148,5 @@ func initializeMetricsBBS(logger *steno.Logger) Bbs.MetricsBBS {
 		logger.Fatalf("Error connecting to etcd: %s\n", err)
 	}
 
-	return Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider())
+	return Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }
