@@ -14,6 +14,7 @@ go get -u github.com/coreos/etcd
 go get -u github.com/apcera/gnatsd
 
 go get github.com/dustin/goveralls
+go get code.google.com/p/go.tools/cmd/cover
 
 go install github.com/onsi/ginkgo/ginkgo
 
