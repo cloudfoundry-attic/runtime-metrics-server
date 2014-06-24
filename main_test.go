@@ -15,7 +15,7 @@ import (
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestRuntimeMetricsServer(t *testing.T) {
@@ -39,7 +39,7 @@ var _ = Describe("Main", func() {
 		etcdRunner.Stop()
 	})
 
-	It("starts the server correctly", func(done Done) {
+	It("starts the server correctly", func() {
 		var reg collector_registrar.AnnounceComponentMessage
 
 		receivedAnnounce := make(chan bool)
@@ -51,7 +51,7 @@ var _ = Describe("Main", func() {
 			receivedAnnounce <- true
 		})
 
-		metricsServerPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/runtime-metrics-server")
+		metricsServerPath, err := gexec.Build("github.com/cloudfoundry-incubator/runtime-metrics-server")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		serverCmd := exec.Command(
@@ -65,11 +65,13 @@ var _ = Describe("Main", func() {
 		)
 		serverCmd.Env = os.Environ()
 
-		session, err := cmdtest.Start(serverCmd)
+		session, err := gexec.Start(serverCmd, GinkgoWriter, GinkgoWriter)
 		Ω(err).ShouldNot(HaveOccurred())
-		defer session.Cmd.Process.Kill()
+		defer func() {
+			session.Kill().Wait()
+		}()
 
-		<-receivedAnnounce
+		Eventually(receivedAnnounce, 5).Should(Receive())
 
 		Eventually(func() error {
 			conn, err := net.Dial("tcp", reg.Host)
@@ -89,7 +91,5 @@ var _ = Describe("Main", func() {
 		resp, err := http.DefaultClient.Do(req)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(resp.StatusCode).Should(Equal(200))
-
-		close(done)
-	}, 5)
+	})
 })

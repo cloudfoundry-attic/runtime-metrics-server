@@ -2,6 +2,7 @@ package instruments_test
 
 import (
 	"errors"
+
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	. "github.com/cloudfoundry-incubator/runtime-metrics-server/instruments"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -31,7 +32,7 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 				fakeBBS.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
 					{Name: models.ExecutorServiceName, Id: "guid-0"},
 					{Name: models.ExecutorServiceName, Id: "guid-1"},
-					{Name: models.FileServerServiceName, Id: "guid-0", Location: "http://example.com"},
+					{Name: models.FileServerServiceName, Id: "guid-0"},
 				}
 			})
 
