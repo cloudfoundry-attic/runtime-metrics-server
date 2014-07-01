@@ -1,0 +1,35 @@
+{
+	"ImportPath": "github.com/cloudfoundry-incubator/metricz",
+	"GoVersion": "go1.3",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/cloudfoundry/gosteno",
+			"Comment": "scotty_09012012-40-g5eb8c6e",
+			"Rev": "5eb8c6e554f0dfc39d6468813b8ac19ec28fe74f"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/loggregatorlib/cfcomponent/localip",
+			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/loggregatorlib/loggertesthelper",
+			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/yagnats",
+			"Rev": "196990d547253e2c2d14e188464ccd69b526e35d"
+		},
+		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.0.0-16-g12446bb",
+			"Rev": "12446bbcc74950944c897e32ea99cc8d058f9c92"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Rev": "7ec350c6bff61a8e3f999e1164f11e5c133605d0"
+		}
+	]
+}
