@@ -39,6 +39,10 @@
 			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry/loggregatorlib/loggertesthelper",
+			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
 			"Rev": "1a43788769c69f92f6f1eaa41cd6366df2c3b5ed"
 		},
