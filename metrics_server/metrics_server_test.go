@@ -9,24 +9,25 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/metricz/localip"
 	. "github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
 	"github.com/cloudfoundry/yagnats/fakeyagnats"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("Metrics Server", func() {
 	var (
 		fakenats   *fakeyagnats.FakeYagnats
-		logger     *steno.Logger
+		logger     lager.Logger
 		bbs        *fake_bbs.FakeMetricsBBS
 		port       uint32
 		server     *MetricsServer
@@ -36,7 +37,7 @@ var _ = Describe("Metrics Server", func() {
 	BeforeEach(func() {
 		fakenats = fakeyagnats.New()
 		bbs = fake_bbs.NewFakeMetricsBBS()
-		logger = steno.NewLogger("fakelogger")
+		logger = cf_lager.New("fake-logger")
 
 		port = 34567 + uint32(config.GinkgoConfig.ParallelNode)
 

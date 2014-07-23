@@ -9,8 +9,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/health_check"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/instruments"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
+	"github.com/pivotal-golang/lager"
 )
 
 type Config struct {
@@ -23,7 +23,7 @@ type Config struct {
 type MetricsServer struct {
 	natsClient yagnats.NATSClient
 	bbs        bbs.MetricsBBS
-	logger     *gosteno.Logger
+	logger     lager.Logger
 	config     Config
 	component  metricz.Component
 }
@@ -31,13 +31,14 @@ type MetricsServer struct {
 func New(
 	natsClient yagnats.NATSClient,
 	bbs bbs.MetricsBBS,
-	logger *gosteno.Logger,
+	logger lager.Logger,
 	config Config,
 ) *MetricsServer {
+	serverLogger := logger.Session("metrics-server")
 	return &MetricsServer{
 		natsClient: natsClient,
 		bbs:        bbs,
-		logger:     logger,
+		logger:     serverLogger,
 		config:     config,
 	}
 }

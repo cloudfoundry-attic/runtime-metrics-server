@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
@@ -13,6 +14,7 @@ import (
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/cloudfoundry/yagnats"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/sigmon"
 )
@@ -74,9 +76,10 @@ var syslogName = flag.String(
 func main() {
 	flag.Parse()
 
-	logger := initializeLogger()
+	logger := cf_lager.New("runtime-metrics-server")
+	stenoLogger := initializeStenoLogger()
 	natsClient := initializeNatsClient(logger)
-	metricsBBS := initializeMetricsBBS(logger)
+	metricsBBS := initializeMetricsBBS(stenoLogger)
 
 	config := metrics_server.Config{
 		Port:     uint32(*port),
@@ -100,7 +103,7 @@ func main() {
 	}
 }
 
-func initializeLogger() *steno.Logger {
+func initializeStenoLogger() *steno.Logger {
 	stenoConfig := steno.Config{
 		Level: steno.LOG_INFO,
 		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
@@ -115,7 +118,7 @@ func initializeLogger() *steno.Logger {
 	return steno.NewLogger("runtime-metrics-server")
 }
 
-func initializeNatsClient(logger *steno.Logger) *yagnats.Client {
+func initializeNatsClient(logger lager.Logger) *yagnats.Client {
 	natsClient := yagnats.NewClient()
 
 	natsMembers := []yagnats.ConnectionProvider{}
@@ -132,7 +135,7 @@ func initializeNatsClient(logger *steno.Logger) *yagnats.Client {
 	})
 
 	if err != nil {
-		logger.Fatalf("Error connecting to NATS: %s\n", err)
+		logger.Fatal("connecting-to-nats-failed", err)
 	}
 
 	return natsClient
