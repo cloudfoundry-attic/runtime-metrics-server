@@ -3,13 +3,11 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -67,19 +65,12 @@ var natsPassword = flag.String(
 	"Password for nats user",
 )
 
-var syslogName = flag.String(
-	"syslogName",
-	"",
-	"syslog program name",
-)
-
 func main() {
 	flag.Parse()
 
 	logger := cf_lager.New("runtime-metrics-server")
-	stenoLogger := initializeStenoLogger()
 	natsClient := initializeNatsClient(logger)
-	metricsBBS := initializeMetricsBBS(stenoLogger)
+	metricsBBS := initializeMetricsBBS(logger)
 
 	config := metrics_server.Config{
 		Port:     uint32(*port),
@@ -103,21 +94,6 @@ func main() {
 	}
 }
 
-func initializeStenoLogger() *steno.Logger {
-	stenoConfig := steno.Config{
-		Level: steno.LOG_INFO,
-		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
-	}
-
-	if *syslogName != "" {
-		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
-	}
-
-	steno.Init(&stenoConfig)
-
-	return steno.NewLogger("runtime-metrics-server")
-}
-
 func initializeNatsClient(logger lager.Logger) *yagnats.Client {
 	natsClient := yagnats.NewClient()
 
@@ -126,7 +102,11 @@ func initializeNatsClient(logger lager.Logger) *yagnats.Client {
 	for _, addr := range strings.Split(*natsAddresses, ",") {
 		natsMembers = append(
 			natsMembers,
-			&yagnats.ConnectionInfo{addr, *natsUsername, *natsPassword},
+			&yagnats.ConnectionInfo{
+				Addr:     addr,
+				Username: *natsUsername,
+				Password: *natsPassword,
+			},
 		)
 	}
 
@@ -141,14 +121,14 @@ func initializeNatsClient(logger lager.Logger) *yagnats.Client {
 	return natsClient
 }
 
-func initializeMetricsBBS(logger *steno.Logger) Bbs.MetricsBBS {
+func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
 
 	if err := etcdAdapter.Connect(); err != nil {
-		logger.Fatalf("Error connecting to etcd: %s\n", err)
+		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
 	return Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
