@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -71,6 +72,8 @@ func main() {
 	logger := cf_lager.New("runtime-metrics-server")
 	natsClient := initializeNatsClient(logger)
 	metricsBBS := initializeMetricsBBS(logger)
+
+	cf_debug_server.Run()
 
 	config := metrics_server.Config{
 		Port:     uint32(*port),
