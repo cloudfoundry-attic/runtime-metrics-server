@@ -82,16 +82,14 @@ func main() {
 		Index:    *index,
 	}
 
-	server := ifrit.Envoke(metrics_server.New(
+	process := ifrit.Envoke(sigmon.New(metrics_server.New(
 		natsClient,
 		metricsBBS,
 		logger,
 		config,
-	))
+	)))
 
-	monitor := ifrit.Envoke(sigmon.New(server))
-
-	err := <-monitor.Wait()
+	err := <-process.Wait()
 	if err != nil {
 		log.Fatal("runtime-metrics-server exited with error: %s", err)
 	}
