@@ -36,7 +36,7 @@ var _ = Describe("Metrics Server", func() {
 
 	BeforeEach(func() {
 		fakenats = fakeyagnats.New()
-		bbs = fake_bbs.NewFakeMetricsBBS()
+		bbs = new(fake_bbs.FakeMetricsBBS)
 		logger = cf_lager.New("fake-logger")
 
 		port = 34567 + uint32(config.GinkgoConfig.ParallelNode)
@@ -46,6 +46,7 @@ var _ = Describe("Metrics Server", func() {
 			Username: "the-username",
 			Password: "the-password",
 			Index:    3,
+			Domain:   "some-domain",
 		})
 
 		httpClient = &http.Client{
@@ -117,7 +118,7 @@ var _ = Describe("Metrics Server", func() {
 
 			Context("when the read from the store succeeds", func() {
 				BeforeEach(func() {
-					bbs.GetAllTasksReturns.Models = []models.Task{
+					bbs.GetAllTasksReturns([]models.Task{
 						models.Task{State: models.TaskStatePending},
 						models.Task{State: models.TaskStatePending},
 						models.Task{State: models.TaskStatePending},
@@ -134,11 +135,13 @@ var _ = Describe("Metrics Server", func() {
 
 						models.Task{State: models.TaskStateResolving},
 						models.Task{State: models.TaskStateResolving},
-					}
+					}, nil)
 
-					bbs.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
+					bbs.GetServiceRegistrationsReturns(models.ServiceRegistrations{
 						{Name: models.ExecutorServiceName, Id: "purple-elephants"},
-					}
+					}, nil)
+
+					bbs.GetAllFreshnessReturns([]string{"some-domain", "some-other-domain"}, nil)
 				})
 
 				It("reports the correct name", func() {
@@ -182,11 +185,21 @@ var _ = Describe("Metrics Server", func() {
 						},
 					}))
 				})
+
+				It("reports the store as fresh", func() {
+					Ω(varzMessage.Contexts[2]).Should(Equal(instrumentation.Context{
+						Name: "Freshness",
+						Metrics: []instrumentation.Metric{
+							{Name: "some-domain", Value: float64(1)},
+							{Name: "some-other-domain", Value: float64(1)},
+						},
+					}))
+				})
 			})
 
 			Context("when there is an error reading from the store", func() {
 				BeforeEach(func() {
-					bbs.GetAllTasksReturns.Err = errors.New("Doesn't work")
+					bbs.GetAllTasksReturns(nil, errors.New("Doesn't work"))
 				})
 
 				It("reports -1 for all of the task counts", func() {
@@ -214,6 +227,19 @@ var _ = Describe("Metrics Server", func() {
 								Value: float64(-1),
 							},
 						},
+					}))
+				})
+			})
+
+			Context("when there is an error determining if the store is fresh", func() {
+				BeforeEach(func() {
+					bbs.GetAllFreshnessReturns(nil, errors.New("oh no!"))
+				})
+
+				It("reports that we're fresh outta freshness", func() {
+					Ω(varzMessage.Contexts[2]).Should(Equal(instrumentation.Context{
+						Name:    "Freshness",
+						Metrics: nil,
 					}))
 				})
 			})

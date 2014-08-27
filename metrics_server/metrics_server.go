@@ -18,6 +18,7 @@ type Config struct {
 	Username string
 	Password string
 	Index    uint
+	Domain   string
 }
 
 type MetricsServer struct {
@@ -57,6 +58,7 @@ func (server *MetricsServer) Run(signals <-chan os.Signal, ready chan<- struct{}
 		[]instrumentation.Instrumentable{
 			instruments.NewTaskInstrument(server.bbs),
 			instruments.NewServiceRegistryInstrument(server.bbs),
+			instruments.NewFreshnessInstrument(server.bbs, server.config.Domain),
 		},
 	)
 

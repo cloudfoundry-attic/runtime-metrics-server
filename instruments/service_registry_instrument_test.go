@@ -16,7 +16,7 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 	var fakeBBS *fake_bbs.FakeMetricsBBS
 
 	BeforeEach(func() {
-		fakeBBS = fake_bbs.NewFakeMetricsBBS()
+		fakeBBS = new(fake_bbs.FakeMetricsBBS)
 		instrument = NewServiceRegistryInstrument(fakeBBS)
 	})
 
@@ -29,11 +29,11 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 
 		Context("when the are services", func() {
 			BeforeEach(func() {
-				fakeBBS.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{
+				fakeBBS.GetServiceRegistrationsReturns(models.ServiceRegistrations{
 					{Name: models.ExecutorServiceName, Id: "guid-0"},
 					{Name: models.ExecutorServiceName, Id: "guid-1"},
 					{Name: models.FileServerServiceName, Id: "guid-0"},
-				}
+				}, nil)
 			})
 
 			It("should have a name", func() {
@@ -53,7 +53,7 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 
 		Context("when there are no services", func() {
 			BeforeEach(func() {
-				fakeBBS.GetServiceRegistrationsReturns.Registrations = models.ServiceRegistrations{}
+				fakeBBS.GetServiceRegistrationsReturns(models.ServiceRegistrations{}, nil)
 			})
 
 			It("should emit 0 executors", func() {
@@ -67,7 +67,7 @@ var _ = Describe("ServiceRegistryInstrument", func() {
 
 		Context("when etcd returns an error ", func() {
 			BeforeEach(func() {
-				fakeBBS.GetServiceRegistrationsReturns.Err = errors.New("pur[l;e")
+				fakeBBS.GetServiceRegistrationsReturns(nil, errors.New("pur[l;e"))
 			})
 
 			It("should emit -1 executors", func() {

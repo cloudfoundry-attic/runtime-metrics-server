@@ -23,11 +23,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "4664f1dff19485bee39602bf645711ba2a4d14fd"
+			"Rev": "c5c41a942931f8d0733e792438136fad03da6bb1"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
+			"Rev": "c5c41a942931f8d0733e792438136fad03da6bb1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "4664f1dff19485bee39602bf645711ba2a4d14fd"
+			"Rev": "c5c41a942931f8d0733e792438136fad03da6bb1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -74,7 +78,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "82dbb8f9b53dba16c9d5c3e0c74fa581d65f8579"
+			"Rev": "0addc90d7dcebcf87ef0fc89240c58bd1c475d8f"
 		}
 	]
 }
