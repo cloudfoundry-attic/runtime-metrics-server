@@ -2,17 +2,17 @@ package main
 
 import (
 	"flag"
-	"log"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
+	"github.com/cloudfoundry-incubator/runtime-metrics-server/nats_client"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/sigmon"
@@ -70,56 +70,37 @@ func main() {
 	flag.Parse()
 
 	logger := cf_lager.New("runtime-metrics-server")
-	natsClient := initializeNatsClient(logger)
 	metricsBBS := initializeMetricsBBS(logger)
 
 	cf_debug_server.Run()
 
-	config := metrics_server.Config{
-		Port:     uint32(*port),
-		Username: *username,
-		Password: *password,
-		Index:    *index,
-	}
+	natsRunner := nats_client.New(*natsAddresses, *natsUsername, *natsPassword, logger)
 
-	process := ifrit.Envoke(sigmon.New(metrics_server.New(
-		natsClient,
+	metricsServer := metrics_server.New(
+		natsRunner.Client(),
 		metricsBBS,
 		logger,
-		config,
-	)))
+		metrics_server.Config{
+			Port:     uint32(*port),
+			Username: *username,
+			Password: *password,
+			Index:    *index,
+		},
+	)
+
+	process := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
+		{"nats", natsRunner},
+		{"metrics", metricsServer},
+	})))
+
+	logger.Info("started")
 
 	err := <-process.Wait()
 	if err != nil {
-		log.Fatal("runtime-metrics-server exited with error: %s", err)
+		logger.Fatal("failed", err)
+	} else {
+		logger.Info("exited")
 	}
-}
-
-func initializeNatsClient(logger lager.Logger) *yagnats.Client {
-	natsClient := yagnats.NewClient()
-
-	natsMembers := []yagnats.ConnectionProvider{}
-
-	for _, addr := range strings.Split(*natsAddresses, ",") {
-		natsMembers = append(
-			natsMembers,
-			&yagnats.ConnectionInfo{
-				Addr:     addr,
-				Username: *natsUsername,
-				Password: *natsPassword,
-			},
-		)
-	}
-
-	err := natsClient.Connect(&yagnats.ConnectionCluster{
-		Members: natsMembers,
-	})
-
-	if err != nil {
-		logger.Fatal("connecting-to-nats-failed", err)
-	}
-
-	return natsClient
 }
 
 func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {

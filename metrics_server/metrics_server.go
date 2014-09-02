@@ -67,49 +67,20 @@ func (server *MetricsServer) Run(signals <-chan os.Signal, ready chan<- struct{}
 		return err
 	}
 
-	close(ready)
-
 	serverStopped := make(chan error)
 	go func() {
 		serverStopped <- server.component.StartMonitoringEndpoints()
 	}()
 
+	close(ready)
+
 	select {
-	case <-signals:
+	case signal := <-signals:
+		server.logger.Info("stopping-on-signal", lager.Data{"signal": signal})
 		server.component.StopMonitoringEndpoints()
 		return nil
 	case err := <-serverStopped:
+		server.logger.Error("stopping-on-failure", err)
 		return err
 	}
 }
-
-/*
-func (server *MetricsServer) Listen() error {
-	registrar := collector_registrar.New(server.natsClient)
-
-	var err error
-	server.component, err = metricz.NewComponent(
-		server.logger,
-		"runtime",
-		server.config.Index,
-		health_check.New(),
-		server.config.Port,
-		[]string{server.config.Username, server.config.Password},
-		[]instrumentation.Instrumentable{
-			instruments.NewTaskInstrument(server.bbs),
-			instruments.NewServiceRegistryInstrument(server.bbs),
-		},
-	)
-
-	err = registrar.RegisterWithCollector(server.component)
-	if err != nil {
-		return err
-	}
-
-	server.component.StartMonitoringEndpoints()
-}
-
-func (server *MetricsServer) Stop() {
-	server.component.StopMonitoringEndpoints()
-}
-*/
