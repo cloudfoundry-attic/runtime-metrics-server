@@ -27,15 +27,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "52dd634b161c818855c406525b41beb8734219d0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "52dd634b161c818855c406525b41beb8734219d0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "52dd634b161c818855c406525b41beb8734219d0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/dropsonde",

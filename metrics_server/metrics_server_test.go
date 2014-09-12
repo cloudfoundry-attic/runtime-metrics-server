@@ -142,6 +142,17 @@ var _ = Describe("Metrics Server", func() {
 					}, nil)
 
 					bbs.GetAllFreshnessReturns([]string{"some-domain", "some-other-domain"}, nil)
+
+					bbs.GetAllDesiredLRPsReturns([]models.DesiredLRP{
+						{ProcessGuid: "desired-1", Instances: 2},
+						{ProcessGuid: "desired-2", Instances: 3},
+					}, nil)
+
+					bbs.GetRunningActualLRPsReturns([]models.ActualLRP{
+						{ProcessGuid: "desired-1", Index: 0},
+						{ProcessGuid: "desired-1", Index: 1},
+						{ProcessGuid: "desired-2", Index: 1},
+					}, nil)
 				})
 
 				It("reports the correct name", func() {
@@ -195,11 +206,23 @@ var _ = Describe("Metrics Server", func() {
 						},
 					}))
 				})
+
+				It("returns the total desired and running actual LRPs", func() {
+					Ω(varzMessage.Contexts[3]).Should(Equal(instrumentation.Context{
+						Name: "LRPs",
+						Metrics: []instrumentation.Metric{
+							{Name: "Desired", Value: float64(5)},
+							{Name: "Running", Value: float64(3)},
+						},
+					}))
+				})
 			})
 
 			Context("when there is an error reading from the store", func() {
 				BeforeEach(func() {
 					bbs.GetAllTasksReturns(nil, errors.New("Doesn't work"))
+					bbs.GetAllDesiredLRPsReturns(nil, errors.New("no."))
+					bbs.GetRunningActualLRPsReturns(nil, errors.New("pushed to master"))
 				})
 
 				It("reports -1 for all of the task counts", func() {
@@ -226,6 +249,16 @@ var _ = Describe("Metrics Server", func() {
 								Name:  "Resolving",
 								Value: float64(-1),
 							},
+						},
+					}))
+				})
+
+				It("reports -1 for all LRP counts", func() {
+					Ω(varzMessage.Contexts[3]).Should(Equal(instrumentation.Context{
+						Name: "LRPs",
+						Metrics: []instrumentation.Metric{
+							{Name: "Desired", Value: float64(-1)},
+							{Name: "Running", Value: float64(-1)},
 						},
 					}))
 				})

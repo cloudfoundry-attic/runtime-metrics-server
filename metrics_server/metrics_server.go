@@ -59,6 +59,7 @@ func (server *MetricsServer) Run(signals <-chan os.Signal, ready chan<- struct{}
 			instruments.NewTaskInstrument(server.bbs),
 			instruments.NewServiceRegistryInstrument(server.bbs),
 			instruments.NewFreshnessInstrument(server.bbs, server.config.Domain),
+			instruments.NewLRPInstrument(server.bbs),
 		},
 	)
 
