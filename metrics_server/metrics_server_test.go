@@ -148,10 +148,10 @@ var _ = Describe("Metrics Server", func() {
 						{ProcessGuid: "desired-2", Instances: 3},
 					}, nil)
 
-					bbs.GetRunningActualLRPsReturns([]models.ActualLRP{
-						{ProcessGuid: "desired-1", Index: 0},
-						{ProcessGuid: "desired-1", Index: 1},
-						{ProcessGuid: "desired-2", Index: 1},
+					bbs.GetAllActualLRPsReturns([]models.ActualLRP{
+						{ProcessGuid: "desired-1", Index: 0, State: models.ActualLRPStateRunning},
+						{ProcessGuid: "desired-1", Index: 1, State: models.ActualLRPStateRunning},
+						{ProcessGuid: "desired-2", Index: 1, State: models.ActualLRPStateStarting},
 					}, nil)
 				})
 
@@ -212,7 +212,8 @@ var _ = Describe("Metrics Server", func() {
 						Name: "LRPs",
 						Metrics: []instrumentation.Metric{
 							{Name: "Desired", Value: float64(5)},
-							{Name: "Running", Value: float64(3)},
+							{Name: "Starting", Value: float64(1)},
+							{Name: "Running", Value: float64(2)},
 						},
 					}))
 				})
@@ -222,7 +223,7 @@ var _ = Describe("Metrics Server", func() {
 				BeforeEach(func() {
 					bbs.GetAllTasksReturns(nil, errors.New("Doesn't work"))
 					bbs.GetAllDesiredLRPsReturns(nil, errors.New("no."))
-					bbs.GetRunningActualLRPsReturns(nil, errors.New("pushed to master"))
+					bbs.GetAllActualLRPsReturns(nil, errors.New("pushed to master"))
 				})
 
 				It("reports -1 for all of the task counts", func() {
@@ -258,6 +259,7 @@ var _ = Describe("Metrics Server", func() {
 						Name: "LRPs",
 						Metrics: []instrumentation.Metric{
 							{Name: "Desired", Value: float64(-1)},
+							{Name: "Starting", Value: float64(-1)},
 							{Name: "Running", Value: float64(-1)},
 						},
 					}))

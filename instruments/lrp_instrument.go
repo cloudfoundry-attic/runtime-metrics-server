@@ -3,6 +3,7 @@ package instruments
 import (
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 type lrpInstrument struct {
@@ -16,6 +17,7 @@ func NewLRPInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Instrumentable 
 func (t *lrpInstrument) Emit() instrumentation.Context {
 	desiredCount := 0
 	runningCount := 0
+	startingCount := 0
 
 	allDesiredLRPs, err := t.bbs.GetAllDesiredLRPs()
 	if err == nil {
@@ -26,10 +28,18 @@ func (t *lrpInstrument) Emit() instrumentation.Context {
 		desiredCount = -1
 	}
 
-	runningActualLRPs, err := t.bbs.GetRunningActualLRPs()
+	allActualLRPs, err := t.bbs.GetAllActualLRPs()
 	if err == nil {
-		runningCount = len(runningActualLRPs)
+		for _, lrp := range allActualLRPs {
+			switch lrp.State {
+			case models.ActualLRPStateStarting:
+				startingCount++
+			case models.ActualLRPStateRunning:
+				runningCount++
+			}
+		}
 	} else {
+		startingCount = -1
 		runningCount = -1
 	}
 
@@ -39,6 +49,10 @@ func (t *lrpInstrument) Emit() instrumentation.Context {
 			{
 				Name:  "Desired",
 				Value: desiredCount,
+			},
+			{
+				Name:  "Starting",
+				Value: startingCount,
 			},
 			{
 				Name:  "Running",
