@@ -177,9 +177,11 @@ var _ = Describe("Main", func() {
 
 		It("should not start server until nats becomes avaialble", func() {
 			Consistently(metricsServer).ShouldNot(gbytes.Say("started"))
+
 			nats.Start()
-			Eventually(metricsServer).Should(gbytes.Say("started"))
+
+			// retries every second; can fail under load, so give it a bit
+			Eventually(metricsServer, 3*time.Second).Should(gbytes.Say("started"))
 		})
 	})
-
 })
