@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apcera/nats"
 	"github.com/cloudfoundry-incubator/metricz/collector_registrar"
 	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	"github.com/cloudfoundry/yagnats"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -50,7 +51,7 @@ var _ = Describe("Main", func() {
 	var metricsPort int
 	var natsPort int
 	var etcdPort int
-	var nats *natsrunner.NATSRunner
+	var natsRunner *natsrunner.NATSRunner
 	var etcdRunner *etcdstorerunner.ETCDClusterRunner
 	var metricsServerPath string
 	var metricsServer *ginkgomon.Runner
@@ -71,7 +72,7 @@ var _ = Describe("Main", func() {
 
 	BeforeEach(func() {
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
-		nats = natsrunner.NewNATSRunner(natsPort)
+		natsRunner = natsrunner.NewNATSRunner(natsPort)
 		metricsServer = NewMetricServer(metricsServerPath, metricsPort, etcdPort, natsPort)
 	})
 
@@ -91,12 +92,12 @@ var _ = Describe("Main", func() {
 
 	Context("When nats is avaialble", func() {
 		BeforeEach(func() {
-			nats.Start()
+			natsRunner.Start()
 			etcdRunner.Start()
 		})
 
 		AfterEach(func() {
-			nats.Stop()
+			natsRunner.Stop()
 			etcdRunner.Stop()
 		})
 
@@ -110,8 +111,8 @@ var _ = Describe("Main", func() {
 
 			BeforeEach(func() {
 				receivedAnnounce = make(chan bool)
-				nats.MessageBus.Subscribe("vcap.component.announce", func(message *yagnats.Message) {
-					err := json.Unmarshal(message.Payload, &reg)
+				natsRunner.MessageBus.Subscribe("vcap.component.announce", func(message *nats.Msg) {
+					err := json.Unmarshal(message.Data, &reg)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					receivedAnnounce <- true
@@ -171,14 +172,14 @@ var _ = Describe("Main", func() {
 		})
 
 		AfterEach(func() {
-			nats.Stop()
+			natsRunner.Stop()
 			etcdRunner.Stop()
 		})
 
 		It("should not start server until nats becomes avaialble", func() {
 			Consistently(metricsServer).ShouldNot(gbytes.Say("started"))
 
-			nats.Start()
+			natsRunner.Start()
 
 			// retries every second; can fail under load, so give it a bit
 			Eventually(metricsServer, 3*time.Second).Should(gbytes.Say("started"))

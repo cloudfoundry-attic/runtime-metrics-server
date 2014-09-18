@@ -9,13 +9,13 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/apcera/nats"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/metricz/localip"
 	. "github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/cloudfoundry/yagnats/fakeyagnats"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -26,7 +26,7 @@ import (
 
 var _ = Describe("Metrics Server", func() {
 	var (
-		fakenats   *fakeyagnats.FakeYagnats
+		fakenats   *fakeyagnats.FakeApceraWrapper
 		logger     lager.Logger
 		bbs        *fake_bbs.FakeMetricsBBS
 		port       uint32
@@ -35,7 +35,7 @@ var _ = Describe("Metrics Server", func() {
 	)
 
 	BeforeEach(func() {
-		fakenats = fakeyagnats.New()
+		fakenats = fakeyagnats.NewApceraClientWrapper()
 		bbs = new(fake_bbs.FakeMetricsBBS)
 		logger = cf_lager.New("fake-logger")
 
@@ -67,8 +67,8 @@ var _ = Describe("Metrics Server", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			payloadChan = make(chan []byte, 1)
-			fakenats.Subscribe("vcap.component.announce", func(msg *yagnats.Message) {
-				payloadChan <- msg.Payload
+			fakenats.Subscribe("vcap.component.announce", func(msg *nats.Msg) {
+				payloadChan <- msg.Data
 			})
 
 			process = ifrit.Envoke(server)

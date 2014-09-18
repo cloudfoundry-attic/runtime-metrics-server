@@ -22,7 +22,7 @@ type Config struct {
 }
 
 type MetricsServer struct {
-	natsClient yagnats.NATSClient
+	natsClient yagnats.ApceraWrapperNATSClient
 	bbs        bbs.MetricsBBS
 	logger     lager.Logger
 	config     Config
@@ -30,7 +30,7 @@ type MetricsServer struct {
 }
 
 func New(
-	natsClient yagnats.NATSClient,
+	natsClient yagnats.ApceraWrapperNATSClient,
 	bbs bbs.MetricsBBS,
 	logger lager.Logger,
 	config Config,

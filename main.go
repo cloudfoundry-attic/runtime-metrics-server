@@ -75,7 +75,7 @@ func main() {
 
 	cf_debug_server.Run()
 
-	natsRunner := nats_client.New(*natsAddresses, *natsUsername, *natsPassword, logger)
+	natsRunner := nats_client.NewRunner(nats_client.NewClient(*natsAddresses, *natsUsername, *natsPassword), logger)
 
 	metricsServer := metrics_server.New(
 		natsRunner.Client(),
