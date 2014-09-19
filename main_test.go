@@ -106,33 +106,35 @@ var _ = Describe("Main", func() {
 		})
 
 		Context("and we are subsribed to component announcements", func() {
-			var reg collector_registrar.AnnounceComponentMessage
-			var announcements <-chan bool
+			var announcement collector_registrar.AnnounceComponentMessage
+			var announcements <-chan collector_registrar.AnnounceComponentMessage
 
 			BeforeEach(func() {
-				receivedAnnouncements := make(chan bool)
+				receivedAnnouncements := make(chan collector_registrar.AnnounceComponentMessage)
 
 				announcements = receivedAnnouncements
 
 				natsRunner.MessageBus.Subscribe("vcap.component.announce", func(message *nats.Msg) {
-					err := json.Unmarshal(message.Data, &reg)
+					var registration collector_registrar.AnnounceComponentMessage
+
+					err := json.Unmarshal(message.Data, &registration)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					receivedAnnouncements <- true
+					receivedAnnouncements <- registration
 				})
 			})
 
 			JustBeforeEach(func() {
-				Eventually(announcements).Should(Receive())
+				Eventually(announcements).Should(Receive(&announcement))
 			})
 
 			It("reports the correct index", func() {
-				Ω(reg.Index).Should(Equal(uint(5)))
+				Ω(announcement.Index).Should(Equal(uint(5)))
 			})
 
 			It("listens on /varz of the reported host", func() {
 				Eventually(func() error {
-					conn, err := net.Dial("tcp", reg.Host)
+					conn, err := net.Dial("tcp", announcement.Host)
 					if err != nil {
 						return nil
 					}
@@ -140,7 +142,7 @@ var _ = Describe("Main", func() {
 					return err
 				}).ShouldNot(HaveOccurred())
 
-				req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/varz", reg.Host), nil)
+				req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/varz", announcement.Host), nil)
 				Ω(err).ShouldNot(HaveOccurred())
 				req.SetBasicAuth("the-username", "the-password")
 
