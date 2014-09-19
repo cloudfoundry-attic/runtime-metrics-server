@@ -107,20 +107,23 @@ var _ = Describe("Main", func() {
 
 		Context("and we are subsribed to component announcements", func() {
 			var reg collector_registrar.AnnounceComponentMessage
-			var receivedAnnounce chan bool
+			var announcements <-chan bool
 
 			BeforeEach(func() {
-				receivedAnnounce = make(chan bool)
+				receivedAnnouncements := make(chan bool)
+
+				announcements = receivedAnnouncements
+
 				natsRunner.MessageBus.Subscribe("vcap.component.announce", func(message *nats.Msg) {
 					err := json.Unmarshal(message.Data, &reg)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					receivedAnnounce <- true
+					receivedAnnouncements <- true
 				})
 			})
 
 			JustBeforeEach(func() {
-				Eventually(receivedAnnounce).Should(Receive())
+				Eventually(announcements).Should(Receive())
 			})
 
 			It("reports the correct index", func() {
