@@ -11,6 +11,7 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
 	"github.com/cloudfoundry/gunk/group_runner"
+	"github.com/cloudfoundry/gunk/natsclientrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -75,10 +76,11 @@ func main() {
 
 	cf_debug_server.Run()
 
-	natsRunner := nats_client.NewRunner(nats_client.NewClient(*natsAddresses, *natsUsername, *natsPassword), logger)
+	natsClient := nats_client.New(*natsAddresses, *natsUsername, *natsPassword)
+	natsClientRunner := natsclientrunner.New(natsClient, logger)
 
 	metricsServer := metrics_server.New(
-		natsRunner.Client(),
+		natsClient,
 		metricsBBS,
 		logger,
 		metrics_server.Config{
@@ -90,7 +92,7 @@ func main() {
 	)
 
 	process := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
-		{"nats", natsRunner},
+		{"nats", natsClientRunner},
 		{"metrics", metricsServer},
 	})))
 
