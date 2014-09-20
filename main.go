@@ -7,7 +7,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
-	"github.com/cloudfoundry-incubator/runtime-metrics-server/nats_client"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
 	"github.com/cloudfoundry/gunk/group_runner"
@@ -76,7 +75,7 @@ func main() {
 
 	cf_debug_server.Run()
 
-	natsClient := nats_client.New(*natsAddresses, *natsUsername, *natsPassword)
+	natsClient := natsclientrunner.NewClient(*natsAddresses, *natsUsername, *natsPassword)
 	natsClientRunner := natsclientrunner.New(natsClient, logger)
 
 	metricsServer := metrics_server.New(
