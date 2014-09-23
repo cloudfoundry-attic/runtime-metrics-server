@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
-	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics_server"
+	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
 	"github.com/cloudfoundry/gunk/group_runner"
-	"github.com/cloudfoundry/gunk/natsclientrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -25,46 +25,10 @@ var etcdCluster = flag.String(
 	"comma-separated list of etcd addresses (http://ip:port)",
 )
 
-var index = flag.Uint(
-	"index",
-	0,
-	"index of the etcd job",
-)
-
-var port = flag.Uint(
-	"port",
-	5678,
-	"port to listen on",
-)
-
-var username = flag.String(
-	"username",
-	"",
-	"basic auth username",
-)
-
-var password = flag.String(
-	"password",
-	"",
-	"basic auth password",
-)
-
-var natsAddresses = flag.String(
-	"natsAddresses",
-	"127.0.0.1:4222",
-	"comma-separated list of NATS addresses (ip:port)",
-)
-
-var natsUsername = flag.String(
-	"natsUsername",
-	"nats",
-	"Username to connect to nats",
-)
-
-var natsPassword = flag.String(
-	"natsPassword",
-	"nats",
-	"Password for nats user",
+var reportInterval = flag.Duration(
+	"reportInterval",
+	time.Minute,
+	"interval on which to report metrics",
 )
 
 func main() {
@@ -75,24 +39,13 @@ func main() {
 
 	cf_debug_server.Run()
 
-	natsClient := natsclientrunner.NewClient(*natsAddresses, *natsUsername, *natsPassword)
-	natsClientRunner := natsclientrunner.New(natsClient, logger)
-
-	metricsServer := metrics_server.New(
-		natsClient,
-		metricsBBS,
-		logger,
-		metrics_server.Config{
-			Port:     uint32(*port),
-			Username: *username,
-			Password: *password,
-			Index:    *index,
-		},
-	)
+	notifier := metrics.PeriodicMetronNotifier{
+		Interval:   *reportInterval,
+		MetricsBBS: metricsBBS,
+	}
 
 	process := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
-		{"nats", natsClientRunner},
-		{"metrics", metricsServer},
+		{"metrics", notifier},
 	})))
 
 	logger.Info("started")

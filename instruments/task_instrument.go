@@ -1,20 +1,28 @@
 package instruments
 
 import (
-	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+)
+
+const (
+	pendingTasks   = metric.Metric("pending-tasks")
+	claimedTasks   = metric.Metric("claimed-tasks")
+	runningTasks   = metric.Metric("running-tasks")
+	completedTasks = metric.Metric("completed-tasks")
+	resolvingTasks = metric.Metric("resolving-tasks")
 )
 
 type taskInstrument struct {
 	bbs bbs.MetricsBBS
 }
 
-func NewTaskInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Instrumentable {
+func NewTaskInstrument(metricsBbs bbs.MetricsBBS) Instrument {
 	return &taskInstrument{bbs: metricsBbs}
 }
 
-func (t *taskInstrument) Emit() instrumentation.Context {
+func (t *taskInstrument) Send() {
 	pendingCount := 0
 	claimedCount := 0
 	runningCount := 0
@@ -46,29 +54,9 @@ func (t *taskInstrument) Emit() instrumentation.Context {
 		resolvingCount = -1
 	}
 
-	return instrumentation.Context{
-		Name: "Tasks",
-		Metrics: []instrumentation.Metric{
-			{
-				Name:  "Pending",
-				Value: pendingCount,
-			},
-			{
-				Name:  "Claimed",
-				Value: claimedCount,
-			},
-			{
-				Name:  "Running",
-				Value: runningCount,
-			},
-			{
-				Name:  "Completed",
-				Value: completedCount,
-			},
-			{
-				Name:  "Resolving",
-				Value: resolvingCount,
-			},
-		},
-	}
+	pendingTasks.Send(pendingCount)
+	claimedTasks.Send(claimedCount)
+	runningTasks.Send(runningCount)
+	completedTasks.Send(completedCount)
+	resolvingTasks.Send(resolvingCount)
 }

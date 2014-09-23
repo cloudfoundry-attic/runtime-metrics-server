@@ -1,10 +1,12 @@
 package instruments
 
 import (
-	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
+
+const serviceRegistrationsMetricPrefix = "service-registrations-"
 
 var serviceNames = []string{
 	models.ExecutorServiceName,
@@ -15,31 +17,20 @@ type serviceRegistryInstrument struct {
 	bbs bbs.MetricsBBS
 }
 
-func NewServiceRegistryInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Instrumentable {
+func NewServiceRegistryInstrument(metricsBbs bbs.MetricsBBS) Instrument {
 	return &serviceRegistryInstrument{bbs: metricsBbs}
 }
 
-func (t *serviceRegistryInstrument) Emit() instrumentation.Context {
-	context := instrumentation.Context{
-		Name: "ServiceRegistrations",
-	}
-
+func (t *serviceRegistryInstrument) Send() {
 	registrations, err := t.bbs.GetServiceRegistrations()
 	if err != nil {
 		for _, serviceName := range serviceNames {
-			context.Metrics = append(context.Metrics, instrumentation.Metric{
-				Name:  serviceName,
-				Value: -1,
-			})
+			metric.Metric(serviceRegistrationsMetricPrefix + serviceName).Send(-1)
 		}
 	} else {
 		for _, serviceName := range serviceNames {
-			context.Metrics = append(context.Metrics, instrumentation.Metric{
-				Name:  serviceName,
-				Value: len(registrations.FilterByName(serviceName)),
-			})
+			registrations := len(registrations.FilterByName(serviceName))
+			metric.Metric(serviceRegistrationsMetricPrefix + serviceName).Send(registrations)
 		}
 	}
-
-	return context
 }

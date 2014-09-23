@@ -1,20 +1,26 @@
 package instruments
 
 import (
-	"github.com/cloudfoundry-incubator/metricz/instrumentation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+)
+
+const (
+	desiredLRPs  = metric.Metric("desired-lrps")
+	startingLRPs = metric.Metric("starting-lrps")
+	runningLRPs  = metric.Metric("running-lrps")
 )
 
 type lrpInstrument struct {
 	bbs bbs.MetricsBBS
 }
 
-func NewLRPInstrument(metricsBbs bbs.MetricsBBS) instrumentation.Instrumentable {
+func NewLRPInstrument(metricsBbs bbs.MetricsBBS) Instrument {
 	return &lrpInstrument{bbs: metricsBbs}
 }
 
-func (t *lrpInstrument) Emit() instrumentation.Context {
+func (t *lrpInstrument) Send() {
 	desiredCount := 0
 	runningCount := 0
 	startingCount := 0
@@ -43,21 +49,7 @@ func (t *lrpInstrument) Emit() instrumentation.Context {
 		runningCount = -1
 	}
 
-	return instrumentation.Context{
-		Name: "LRPs",
-		Metrics: []instrumentation.Metric{
-			{
-				Name:  "Desired",
-				Value: desiredCount,
-			},
-			{
-				Name:  "Starting",
-				Value: startingCount,
-			},
-			{
-				Name:  "Running",
-				Value: runningCount,
-			},
-		},
-	}
+	desiredLRPs.Send(desiredCount)
+	startingLRPs.Send(startingCount)
+	runningLRPs.Send(runningCount)
 }

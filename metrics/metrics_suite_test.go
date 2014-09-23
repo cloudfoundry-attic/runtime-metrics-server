@@ -1,4 +1,4 @@
-package metrics_server_test
+package metrics_test
 
 import (
 	. "github.com/onsi/ginkgo"
