@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	pendingTasks   = metric.Metric("pending-tasks")
-	claimedTasks   = metric.Metric("claimed-tasks")
-	runningTasks   = metric.Metric("running-tasks")
-	completedTasks = metric.Metric("completed-tasks")
-	resolvingTasks = metric.Metric("resolving-tasks")
+	pendingTasks   = metric.Metric("TasksPending")
+	claimedTasks   = metric.Metric("TasksClaimed")
+	runningTasks   = metric.Metric("TasksRunning")
+	completedTasks = metric.Metric("TasksCompleted")
+	resolvingTasks = metric.Metric("TasksResolving")
 )
 
 type taskInstrument struct {

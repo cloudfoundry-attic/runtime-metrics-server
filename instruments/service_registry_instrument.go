@@ -6,7 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-const serviceRegistrationsMetricPrefix = "service-registrations-"
+const serviceRegistrationsMetricPrefix = "ServiceRegistrations"
 
 var serviceNames = []string{
 	models.ExecutorServiceName,

@@ -93,14 +93,14 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports the number of registered services by type", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("service-registrations-Executor")
+				return sender.GetValue("ServiceRegistrationsExecutor")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("service-registrations-FileServer")
+				return sender.GetValue("ServiceRegistrationsFileServer")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 2,
 				Unit:  "Metric",
@@ -109,14 +109,14 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports that the store's domains are fresh", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("freshness-some-domain")
+				return sender.GetValue("Freshness.some-domain")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("freshness-some-other-domain")
+				return sender.GetValue("Freshness.some-other-domain")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
@@ -125,35 +125,35 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("emits metrics for tasks in each state", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("pending-tasks")
+				return sender.GetValue("TasksPending")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 3,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("claimed-tasks")
+				return sender.GetValue("TasksClaimed")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 2,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("running-tasks")
+				return sender.GetValue("TasksRunning")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("completed-tasks")
+				return sender.GetValue("TasksCompleted")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 4,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("resolving-tasks")
+				return sender.GetValue("TasksResolving")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 2,
 				Unit:  "Metric",
@@ -162,21 +162,21 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("emits desired LRP metrics", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("desired-lrps")
+				return sender.GetValue("LRPsDesired")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 5,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("starting-lrps")
+				return sender.GetValue("LRPsStarting")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("running-lrps")
+				return sender.GetValue("LRPsRunning")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 2,
 				Unit:  "Metric",
@@ -193,35 +193,35 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports -1 for all task metrics", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("pending-tasks")
+				return sender.GetValue("TasksPending")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("claimed-tasks")
+				return sender.GetValue("TasksClaimed")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("running-tasks")
+				return sender.GetValue("TasksRunning")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("completed-tasks")
+				return sender.GetValue("TasksCompleted")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("resolving-tasks")
+				return sender.GetValue("TasksResolving")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
@@ -230,21 +230,21 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports -1 for all LRP metrics", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("desired-lrps")
+				return sender.GetValue("LRPsDesired")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("starting-lrps")
+				return sender.GetValue("LRPsStarting")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("running-lrps")
+				return sender.GetValue("LRPsRunning")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",

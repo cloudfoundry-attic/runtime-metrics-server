@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	desiredLRPs  = metric.Metric("desired-lrps")
-	startingLRPs = metric.Metric("starting-lrps")
-	runningLRPs  = metric.Metric("running-lrps")
+	desiredLRPs  = metric.Metric("LRPsDesired")
+	startingLRPs = metric.Metric("LRPsStarting")
+	runningLRPs  = metric.Metric("LRPsRunning")
 )
 
 type lrpInstrument struct {

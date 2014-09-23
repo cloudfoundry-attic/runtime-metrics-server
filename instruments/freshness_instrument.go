@@ -5,7 +5,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 )
 
-const freshnessMetricPrefix = "freshness-"
+const freshnessMetricPrefix = "Freshness."
 
 type freshnessInstrument struct {
 	bbs bbs.MetricsBBS
