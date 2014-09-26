@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"strings"
 	"time"
 
@@ -10,12 +11,12 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
-	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
@@ -44,9 +45,11 @@ func main() {
 		MetricsBBS: metricsBBS,
 	}
 
-	process := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
+	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"metrics", notifier},
-	})))
+	})
+
+	process := ifrit.Envoke(sigmon.New(group))
 
 	logger.Info("started")
 
