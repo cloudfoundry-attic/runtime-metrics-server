@@ -13,8 +13,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -79,7 +79,7 @@ func main() {
 func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
-		workerpool.NewWorkerPool(10),
+		workpool.NewWorkPool(10),
 	)
 
 	if err := etcdAdapter.Connect(); err != nil {
