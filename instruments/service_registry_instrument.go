@@ -10,7 +10,6 @@ const serviceRegistrationsMetricPrefix = "ServiceRegistrations"
 
 var serviceNames = []string{
 	models.ExecutorServiceName,
-	models.FileServerServiceName,
 }
 
 type serviceRegistryInstrument struct {
