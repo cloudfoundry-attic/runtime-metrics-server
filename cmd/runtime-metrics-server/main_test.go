@@ -40,12 +40,9 @@ var _ = Describe("Runtime Metrics Server", func() {
 			"-etcdCluster", strings.Join(etcdRunner.NodeURLS(), ","),
 			"-reportInterval", reportInterval.String(),
 			"-heartbeatInterval", heartbeatInterval.String(),
+			"-dropsondeOrigin", "test-metrics-server",
+			"-dropsondeDestination", testMetricsListener.LocalAddr().String(),
 		)
-
-		cmd.Env = []string{
-			"DROPSONDE_ORIGIN=test-metrics-server",
-			"DROPSONDE_DESTINATION=" + testMetricsListener.LocalAddr().String(),
-		}
 
 		runner := ginkgomon.New(ginkgomon.Config{
 			Name:              "metrics-server",

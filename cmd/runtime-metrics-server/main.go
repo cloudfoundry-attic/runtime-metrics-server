@@ -11,7 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
-	_ "github.com/cloudfoundry/dropsonde/autowire"
+	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -40,10 +40,23 @@ var heartbeatInterval = flag.Duration(
 	"the interval between heartbeats to the lock",
 )
 
+var dropsondeOrigin = flag.String(
+	"dropsondeOrigin",
+	"runtime_metrics_server",
+	"Origin identifier for dropsonde-emitted metrics.",
+)
+
+var dropsondeDestination = flag.String(
+	"dropsondeDestination",
+	"localhost:3457",
+	"Destination for dropsonde-emitted metrics.",
+)
+
 func main() {
 	flag.Parse()
 
 	logger := cf_lager.New("runtime-metrics-server")
+	initializeDropsonde(logger)
 	metricsBBS := initializeMetricsBBS(logger)
 
 	cf_debug_server.Run()
@@ -73,6 +86,13 @@ func main() {
 		logger.Fatal("failed", err)
 	} else {
 		logger.Info("exited")
+	}
+}
+
+func initializeDropsonde(logger lager.Logger) {
+	err := dropsonde.Initialize(*dropsondeOrigin, *dropsondeDestination)
+	if err != nil {
+		logger.Error("failed to initialize dropsonde: %v", err)
 	}
 }
 
