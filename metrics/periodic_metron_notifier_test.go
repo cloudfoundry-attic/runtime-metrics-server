@@ -72,7 +72,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 			}, nil)
 
 			bbs.GetServiceRegistrationsReturns(models.ServiceRegistrations{
-				{Name: models.ExecutorServiceName, Id: "purple-elephants"},
+				{Name: models.CellServiceName, Id: "purple-elephants"},
 			}, nil)
 
 			bbs.FreshnessesReturns([]models.Freshness{{"some-domain", 10}, {"some-other-domain", 20}}, nil)
@@ -91,7 +91,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports the number of registered services by type", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("ServiceRegistrationsExecutor")
+				return sender.GetValue("ServiceRegistrationsCell")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",

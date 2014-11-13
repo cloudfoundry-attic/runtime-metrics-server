@@ -9,7 +9,7 @@ import (
 const serviceRegistrationsMetricPrefix = "ServiceRegistrations"
 
 var serviceNames = []string{
-	models.ExecutorServiceName,
+	models.CellServiceName,
 }
 
 type serviceRegistryInstrument struct {
