@@ -17,9 +17,9 @@ func NewFreshnessInstrument(metricsBbs bbs.MetricsBBS) Instrument {
 
 func (t *freshnessInstrument) Send() {
 	// error intentionally dropped; report an empty set in the case of an error
-	freshDomains, _ := t.bbs.GetAllFreshness()
+	freshnesses, _ := t.bbs.Freshnesses()
 
-	for _, domain := range freshDomains {
-		metric.Metric(freshnessMetricPrefix + domain).Send(1)
+	for _, freshness := range freshnesses {
+		metric.Metric(freshnessMetricPrefix + freshness.Domain).Send(1)
 	}
 }

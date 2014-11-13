@@ -75,7 +75,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				{Name: models.ExecutorServiceName, Id: "purple-elephants"},
 			}, nil)
 
-			bbs.GetAllFreshnessReturns([]string{"some-domain", "some-other-domain"}, nil)
+			bbs.FreshnessesReturns([]models.Freshness{{"some-domain", 10}, {"some-other-domain", 20}}, nil)
 
 			bbs.GetAllDesiredLRPsReturns([]models.DesiredLRP{
 				{ProcessGuid: "desired-1", Instances: 2},
