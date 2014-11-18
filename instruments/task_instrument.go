@@ -29,7 +29,7 @@ func (t *taskInstrument) Send() {
 	completedCount := 0
 	resolvingCount := 0
 
-	allTasks, err := t.bbs.GetAllTasks()
+	allTasks, err := t.bbs.Tasks()
 
 	if err == nil {
 		for _, task := range allTasks {

@@ -25,7 +25,7 @@ func (t *lrpInstrument) Send() {
 	runningCount := 0
 	startingCount := 0
 
-	allDesiredLRPs, err := t.bbs.GetAllDesiredLRPs()
+	allDesiredLRPs, err := t.bbs.DesiredLRPs()
 	if err == nil {
 		for _, lrp := range allDesiredLRPs {
 			desiredCount += lrp.Instances
@@ -34,7 +34,7 @@ func (t *lrpInstrument) Send() {
 		desiredCount = -1
 	}
 
-	allActualLRPs, err := t.bbs.GetAllActualLRPs()
+	allActualLRPs, err := t.bbs.ActualLRPs()
 	if err == nil {
 		for _, lrp := range allActualLRPs {
 			switch lrp.State {

@@ -52,7 +52,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 	Context("when the read from the store succeeds", func() {
 		BeforeEach(func() {
-			bbs.GetAllTasksReturns([]models.Task{
+			bbs.TasksReturns([]models.Task{
 				models.Task{State: models.TaskStatePending},
 				models.Task{State: models.TaskStatePending},
 				models.Task{State: models.TaskStatePending},
@@ -71,18 +71,18 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				models.Task{State: models.TaskStateResolving},
 			}, nil)
 
-			bbs.GetServiceRegistrationsReturns(models.ServiceRegistrations{
+			bbs.ServiceRegistrationsReturns(models.ServiceRegistrations{
 				{Name: models.CellServiceName, Id: "purple-elephants"},
 			}, nil)
 
 			bbs.FreshnessesReturns([]models.Freshness{{"some-domain", 10}, {"some-other-domain", 20}}, nil)
 
-			bbs.GetAllDesiredLRPsReturns([]models.DesiredLRP{
+			bbs.DesiredLRPsReturns([]models.DesiredLRP{
 				{ProcessGuid: "desired-1", Instances: 2},
 				{ProcessGuid: "desired-2", Instances: 3},
 			}, nil)
 
-			bbs.GetAllActualLRPsReturns([]models.ActualLRP{
+			bbs.ActualLRPsReturns([]models.ActualLRP{
 				{ProcessGuid: "desired-1", Index: 0, State: models.ActualLRPStateRunning},
 				{ProcessGuid: "desired-1", Index: 1, State: models.ActualLRPStateRunning},
 				{ProcessGuid: "desired-2", Index: 1, State: models.ActualLRPStateStarting},
@@ -177,9 +177,9 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 	Context("when the store cannot be reached", func() {
 		BeforeEach(func() {
-			bbs.GetAllTasksReturns(nil, errors.New("Doesn't work"))
-			bbs.GetAllDesiredLRPsReturns(nil, errors.New("no."))
-			bbs.GetAllActualLRPsReturns(nil, errors.New("pushed to master"))
+			bbs.TasksReturns(nil, errors.New("Doesn't work"))
+			bbs.DesiredLRPsReturns(nil, errors.New("no."))
+			bbs.ActualLRPsReturns(nil, errors.New("pushed to master"))
 		})
 
 		It("reports -1 for all task metrics", func() {

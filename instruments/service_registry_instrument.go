@@ -21,7 +21,7 @@ func NewServiceRegistryInstrument(metricsBbs bbs.MetricsBBS) Instrument {
 }
 
 func (t *serviceRegistryInstrument) Send() {
-	registrations, err := t.bbs.GetServiceRegistrations()
+	registrations, err := t.bbs.ServiceRegistrations()
 	if err != nil {
 		for _, serviceName := range serviceNames {
 			metric.Metric(serviceRegistrationsMetricPrefix + serviceName).Send(-1)
