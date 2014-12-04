@@ -38,7 +38,7 @@ func (t *lrpInstrument) Send() {
 	if err == nil {
 		for _, lrp := range allActualLRPs {
 			switch lrp.State {
-			case models.ActualLRPStateStarting:
+			case models.ActualLRPStateClaimed:
 				startingCount++
 			case models.ActualLRPStateRunning:
 				runningCount++

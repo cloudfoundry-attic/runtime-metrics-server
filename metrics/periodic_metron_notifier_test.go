@@ -85,7 +85,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 			bbs.ActualLRPsReturns([]models.ActualLRP{
 				{ProcessGuid: "desired-1", Index: 0, State: models.ActualLRPStateRunning},
 				{ProcessGuid: "desired-1", Index: 1, State: models.ActualLRPStateRunning},
-				{ProcessGuid: "desired-2", Index: 1, State: models.ActualLRPStateStarting},
+				{ProcessGuid: "desired-2", Index: 1, State: models.ActualLRPStateClaimed},
 			}, nil)
 		})
 
