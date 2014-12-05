@@ -57,9 +57,6 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				models.Task{State: models.TaskStatePending},
 				models.Task{State: models.TaskStatePending},
 
-				models.Task{State: models.TaskStateClaimed},
-				models.Task{State: models.TaskStateClaimed},
-
 				models.Task{State: models.TaskStateRunning},
 
 				models.Task{State: models.TaskStateCompleted},
@@ -123,13 +120,6 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("TasksClaimed")
-			}, reportInterval+aBit).Should(Equal(fake.Metric{
-				Value: 2,
-				Unit:  "Metric",
-			}))
-
-			Eventually(func() fake.Metric {
 				return sender.GetValue("TasksRunning")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
@@ -185,13 +175,6 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 		It("reports -1 for all task metrics", func() {
 			Eventually(func() fake.Metric {
 				return sender.GetValue("TasksPending")
-			}, reportInterval+aBit).Should(Equal(fake.Metric{
-				Value: -1,
-				Unit:  "Metric",
-			}))
-
-			Eventually(func() fake.Metric {
-				return sender.GetValue("TasksClaimed")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: -1,
 				Unit:  "Metric",
