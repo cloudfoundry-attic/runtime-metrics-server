@@ -72,7 +72,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				{Name: models.CellServiceName, Id: "purple-elephants"},
 			}, nil)
 
-			bbs.FreshnessesReturns([]models.Freshness{{"some-domain", 10}, {"some-other-domain", 20}}, nil)
+			bbs.DomainsReturns([]string{"some-domain", "some-other-domain"}, nil)
 
 			bbs.DesiredLRPsReturns([]models.DesiredLRP{
 				{ProcessGuid: "desired-1", Instances: 2},
@@ -97,14 +97,14 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		It("reports that the store's domains are fresh", func() {
 			Eventually(func() fake.Metric {
-				return sender.GetValue("Freshness.some-domain")
+				return sender.GetValue("Domain.some-domain")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",
 			}))
 
 			Eventually(func() fake.Metric {
-				return sender.GetValue("Freshness.some-other-domain")
+				return sender.GetValue("Domain.some-other-domain")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 1,
 				Unit:  "Metric",

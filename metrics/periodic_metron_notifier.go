@@ -20,7 +20,7 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 
 	tasksInstrument := instruments.NewTaskInstrument(notifier.MetricsBBS)
 	lrpsInstrument := instruments.NewLRPInstrument(notifier.MetricsBBS)
-	freshnessInstrument := instruments.NewFreshnessInstrument(notifier.MetricsBBS)
+	domainInstrument := instruments.NewDomainInstrument(notifier.MetricsBBS)
 	serviceRegistryInstrument := instruments.NewServiceRegistryInstrument(notifier.MetricsBBS)
 
 	for {
@@ -28,7 +28,7 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 		case <-ticker.C:
 			tasksInstrument.Send()
 			lrpsInstrument.Send()
-			freshnessInstrument.Send()
+			domainInstrument.Send()
 			serviceRegistryInstrument.Send()
 
 		case <-signals:
