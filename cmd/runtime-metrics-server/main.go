@@ -53,13 +53,12 @@ var dropsondeDestination = flag.String(
 )
 
 func main() {
+	cf_debug_server.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	logger := cf_lager.New("runtime-metrics-server")
 	initializeDropsonde(logger)
 	metricsBBS := initializeMetricsBBS(logger)
-
-	cf_debug_server.Run()
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
@@ -72,10 +71,18 @@ func main() {
 		MetricsBBS: metricsBBS,
 	}
 
-	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
+	members := grouper.Members{
 		{"heartbeater", heartbeater},
 		{"metrics", notifier},
-	})
+	}
+
+	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+		members = append(grouper.Members{
+			{"debug-server", cf_debug_server.Runner(dbgAddr)},
+		}, members...)
+	}
+
+	group := grouper.NewOrdered(os.Interrupt, members)
 
 	process := ifrit.Invoke(sigmon.New(group))
 
