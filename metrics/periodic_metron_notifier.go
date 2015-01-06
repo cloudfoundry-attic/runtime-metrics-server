@@ -6,11 +6,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/instruments"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/pivotal-golang/lager"
 )
 
 type PeriodicMetronNotifier struct {
 	Interval   time.Duration
 	MetricsBBS bbs.MetricsBBS
+	Logger     lager.Logger
 }
 
 func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -18,7 +20,7 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 
 	ticker := time.NewTicker(notifier.Interval)
 
-	tasksInstrument := instruments.NewTaskInstrument(notifier.MetricsBBS)
+	tasksInstrument := instruments.NewTaskInstrument(notifier.Logger, notifier.MetricsBBS)
 	lrpsInstrument := instruments.NewLRPInstrument(notifier.MetricsBBS)
 	domainInstrument := instruments.NewDomainInstrument(notifier.MetricsBBS)
 	serviceRegistryInstrument := instruments.NewServiceRegistryInstrument(notifier.MetricsBBS)

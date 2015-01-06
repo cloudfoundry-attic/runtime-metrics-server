@@ -4,6 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/pivotal-golang/lager"
 )
 
 const (
@@ -14,11 +15,12 @@ const (
 )
 
 type taskInstrument struct {
-	bbs bbs.MetricsBBS
+	logger lager.Logger
+	bbs    bbs.MetricsBBS
 }
 
-func NewTaskInstrument(metricsBbs bbs.MetricsBBS) Instrument {
-	return &taskInstrument{bbs: metricsBbs}
+func NewTaskInstrument(logger lager.Logger, metricsBbs bbs.MetricsBBS) Instrument {
+	return &taskInstrument{logger: logger, bbs: metricsBbs}
 }
 
 func (t *taskInstrument) Send() {
@@ -27,7 +29,7 @@ func (t *taskInstrument) Send() {
 	completedCount := 0
 	resolvingCount := 0
 
-	allTasks, err := t.bbs.Tasks()
+	allTasks, err := t.bbs.Tasks(t.logger)
 
 	if err == nil {
 		for _, task := range allTasks {

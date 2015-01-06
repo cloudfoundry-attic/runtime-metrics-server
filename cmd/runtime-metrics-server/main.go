@@ -69,6 +69,7 @@ func main() {
 	notifier := metrics.PeriodicMetronNotifier{
 		Interval:   *reportInterval,
 		MetricsBBS: metricsBBS,
+		Logger: logger,
 	}
 
 	members := grouper.Members{
