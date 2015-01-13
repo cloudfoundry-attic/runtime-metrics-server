@@ -54,6 +54,7 @@ var dropsondeDestination = flag.String(
 
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
+	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	logger := cf_lager.New("runtime-metrics-server")
@@ -69,7 +70,7 @@ func main() {
 	notifier := metrics.PeriodicMetronNotifier{
 		Interval:   *reportInterval,
 		MetricsBBS: metricsBBS,
-		Logger: logger,
+		Logger:     logger,
 	}
 
 	members := grouper.Members{
