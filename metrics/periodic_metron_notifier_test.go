@@ -83,6 +83,10 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				{ActualLRPKey: models.NewActualLRPKey("desired-1", 0, "domain"), State: models.ActualLRPStateRunning},
 				{ActualLRPKey: models.NewActualLRPKey("desired-1", 1, "domain"), State: models.ActualLRPStateRunning},
 				{ActualLRPKey: models.NewActualLRPKey("desired-2", 1, "domain"), State: models.ActualLRPStateClaimed},
+				{ActualLRPKey: models.NewActualLRPKey("desired-3", 0, "domain"), State: models.ActualLRPStateRunning},
+				{ActualLRPKey: models.NewActualLRPKey("desired-3", 1, "domain"), State: models.ActualLRPStateCrashed},
+				{ActualLRPKey: models.NewActualLRPKey("desired-3", 2, "domain"), State: models.ActualLRPStateCrashed},
+				{ActualLRPKey: models.NewActualLRPKey("desired-4", 0, "domain"), State: models.ActualLRPStateCrashed},
 			}, nil)
 		})
 
@@ -158,6 +162,20 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 			Eventually(func() fake.Metric {
 				return sender.GetValue("LRPsRunning")
+			}, reportInterval+aBit).Should(Equal(fake.Metric{
+				Value: 3,
+				Unit:  "Metric",
+			}))
+
+			Eventually(func() fake.Metric {
+				return sender.GetValue("CrashedActualLRPs")
+			}, reportInterval+aBit).Should(Equal(fake.Metric{
+				Value: 3,
+				Unit:  "Metric",
+			}))
+
+			Eventually(func() fake.Metric {
+				return sender.GetValue("CrashingDesiredLRPs")
 			}, reportInterval+aBit).Should(Equal(fake.Metric{
 				Value: 2,
 				Unit:  "Metric",

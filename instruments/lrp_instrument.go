@@ -7,9 +7,11 @@ import (
 )
 
 const (
-	desiredLRPs  = metric.Metric("LRPsDesired")
-	startingLRPs = metric.Metric("LRPsStarting")
-	runningLRPs  = metric.Metric("LRPsRunning")
+	desiredLRPs         = metric.Metric("LRPsDesired")
+	startingLRPs        = metric.Metric("LRPsStarting")
+	runningLRPs         = metric.Metric("LRPsRunning")
+	crashedActualLRPs   = metric.Metric("CrashedActualLRPs")
+	crashingDesiredLRPs = metric.Metric("CrashingDesiredLRPs")
 )
 
 type lrpInstrument struct {
@@ -24,6 +26,7 @@ func (t *lrpInstrument) Send() {
 	desiredCount := 0
 	runningCount := 0
 	startingCount := 0
+	crashedCount := 0
 
 	allDesiredLRPs, err := t.bbs.DesiredLRPs()
 	if err == nil {
@@ -34,6 +37,8 @@ func (t *lrpInstrument) Send() {
 		desiredCount = -1
 	}
 
+	crashingDesireds := map[string]struct{}{}
+
 	allActualLRPs, err := t.bbs.ActualLRPs()
 	if err == nil {
 		for _, lrp := range allActualLRPs {
@@ -42,6 +47,9 @@ func (t *lrpInstrument) Send() {
 				startingCount++
 			case models.ActualLRPStateRunning:
 				runningCount++
+			case models.ActualLRPStateCrashed:
+				crashingDesireds[lrp.ProcessGuid] = struct{}{}
+				crashedCount++
 			}
 		}
 	} else {
@@ -52,4 +60,6 @@ func (t *lrpInstrument) Send() {
 	desiredLRPs.Send(desiredCount)
 	startingLRPs.Send(startingCount)
 	runningLRPs.Send(runningCount)
+	crashedActualLRPs.Send(crashedCount)
+	crashingDesiredLRPs.Send(len(crashingDesireds))
 }
