@@ -13,10 +13,10 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -80,6 +80,7 @@ func main() {
 		Interval:   *reportInterval,
 		MetricsBBS: metricsBBS,
 		Logger:     logger,
+		Clock:      clock.NewClock(),
 	}
 
 	members := grouper.Members{
@@ -124,5 +125,5 @@ func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewMetricsBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	return Bbs.NewMetricsBBS(etcdAdapter, clock.NewClock(), logger)
 }

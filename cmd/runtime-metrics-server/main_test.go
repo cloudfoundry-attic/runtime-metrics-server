@@ -19,8 +19,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/events"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/clock"
 )
 
 var _ = Describe("Runtime Metrics Server", func() {
@@ -61,7 +61,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), models.NewDefaultRestartCalculator(), lagertest.NewTestLogger("test"))
+		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), models.NewDefaultRestartCalculator(), lagertest.NewTestLogger("test"))
 
 		heartbeatInterval = 10 * time.Millisecond
 		reportInterval = 10 * time.Millisecond

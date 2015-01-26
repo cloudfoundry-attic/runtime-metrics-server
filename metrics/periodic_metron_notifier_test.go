@@ -10,7 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
-	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
+	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -24,9 +24,9 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 	var (
 		sender *fake.FakeMetricSender
 
-		bbs              *fake_bbs.FakeMetricsBBS
-		reportInterval   time.Duration
-		fakeTimeProvider *faketimeprovider.FakeTimeProvider
+		bbs            *fake_bbs.FakeMetricsBBS
+		reportInterval time.Duration
+		fakeClock      *fakeclock.FakeClock
 
 		pmn ifrit.Process
 	)
@@ -35,7 +35,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 		reportInterval = 100 * time.Millisecond
 
 		bbs = new(fake_bbs.FakeMetricsBBS)
-		fakeTimeProvider = faketimeprovider.New(time.Unix(123, 456))
+		fakeClock = fakeclock.NewFakeClock(time.Unix(123, 456))
 
 		sender = fake.NewFakeMetricSender()
 		metrics.Initialize(sender)
@@ -43,9 +43,9 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 	JustBeforeEach(func() {
 		pmn = ifrit.Invoke(PeriodicMetronNotifier{
-			Interval:     reportInterval,
-			MetricsBBS:   bbs,
-			TimeProvider: fakeTimeProvider,
+			Interval:   reportInterval,
+			MetricsBBS: bbs,
+			Clock:      fakeClock,
 		})
 	})
 
@@ -56,7 +56,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 	Context("when the report interval elapses", func() {
 		JustBeforeEach(func() {
-			fakeTimeProvider.Increment(reportInterval)
+			fakeClock.Increment(reportInterval)
 		})
 
 		Context("when the read from the store succeeds", func() {
@@ -89,7 +89,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				}, nil)
 
 				bbs.ActualLRPsStub = func() ([]models.ActualLRP, error) {
-					fakeTimeProvider.Increment(time.Hour)
+					fakeClock.Increment(time.Hour)
 
 					return []models.ActualLRP{
 						{ActualLRPKey: models.NewActualLRPKey("desired-1", 0, "domain"), State: models.ActualLRPStateRunning},
