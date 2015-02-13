@@ -14,10 +14,11 @@ import (
 const metricsReportingDuration = metric.Duration("MetricsReportingDuration")
 
 type PeriodicMetronNotifier struct {
-	Interval   time.Duration
-	MetricsBBS bbs.MetricsBBS
-	Logger     lager.Logger
-	Clock      clock.Clock
+	Interval    time.Duration
+	MetricsBBS  bbs.MetricsBBS
+	ETCDCluster []string
+	Logger      lager.Logger
+	Clock       clock.Clock
 }
 
 func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -29,6 +30,7 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 	lrpsInstrument := instruments.NewLRPInstrument(notifier.MetricsBBS)
 	domainInstrument := instruments.NewDomainInstrument(notifier.MetricsBBS)
 	serviceRegistryInstrument := instruments.NewServiceRegistryInstrument(notifier.MetricsBBS)
+	etcdInstrument := instruments.NewETCDInstrument(notifier.Logger, notifier.ETCDCluster)
 
 	for {
 		select {
@@ -39,6 +41,7 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 			lrpsInstrument.Send()
 			domainInstrument.Send()
 			serviceRegistryInstrument.Send()
+			etcdInstrument.Send()
 
 			finishedAt := notifier.Clock.Now()
 

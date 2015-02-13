@@ -77,10 +77,11 @@ func main() {
 	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *heartbeatInterval)
 
 	notifier := metrics.PeriodicMetronNotifier{
-		Interval:   *reportInterval,
-		MetricsBBS: metricsBBS,
-		Logger:     logger,
-		Clock:      clock.NewClock(),
+		Interval:    *reportInterval,
+		MetricsBBS:  metricsBBS,
+		ETCDCluster: strings.Split(*etcdCluster, ","),
+		Logger:      logger,
+		Clock:       clock.NewClock(),
 	}
 
 	members := grouper.Members{
