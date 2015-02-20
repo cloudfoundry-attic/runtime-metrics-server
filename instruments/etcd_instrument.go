@@ -93,6 +93,14 @@ func (t *etcdInstrument) sendLeaderStats(etcdAddr string, index int) {
 		return
 	}
 
+	resp, err = t.client.Get(t.keysEndpoint((etcdAddr)))
+	if err != nil {
+		t.logger.Error("failed-to-get-keys", err)
+		return
+	}
+
+	resp.Body.Close()
+
 	raftTermHeader := resp.Header.Get("X-Raft-Term")
 
 	raftTerm, err := strconv.ParseInt(raftTermHeader, 10, 0)
@@ -167,6 +175,10 @@ func (t *etcdInstrument) selfStatsEndpoint(etcdAddr string) string {
 
 func (t *etcdInstrument) storeStatsEndpoint(etcdAddr string) string {
 	return urljoiner.Join(etcdAddr, "v2", "stats", "store")
+}
+
+func (t *etcdInstrument) keysEndpoint(etcdAddr string) string {
+	return urljoiner.Join(etcdAddr, "v2", "keys")
 }
 
 type etcdLeaderStats struct {

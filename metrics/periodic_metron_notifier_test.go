@@ -170,31 +170,30 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 						}
 	        `))
 
-					etcd2.RouteToHandler("GET", "/v2/stats/store", ghttp.CombineHandlers(
-						func(w http.ResponseWriter, r *http.Request) {
-							w.Header().Set("X-Raft-Term", "123")
-						},
-						ghttp.RespondWith(200, `
-							{
-							  "getsSuccess": 10195,
-							  "getsFail": 26705,
-							  "setsSuccess": 2540,
-							  "setsFail": 0,
-							  "deleteSuccess": 0,
-							  "deleteFail": 0,
-							  "updateSuccess": 0,
-							  "updateFail": 0,
-							  "createSuccess": 18,
-							  "createFail": 15252,
-							  "compareAndSwapSuccess": 50350,
-							  "compareAndSwapFail": 22,
-							  "compareAndDeleteSuccess": 4,
-							  "compareAndDeleteFail": 0,
-							  "expireCount": 1,
-							  "watchers": 12
-							}
-		        `),
-					))
+					etcd2.RouteToHandler("GET", "/v2/stats/store", ghttp.RespondWith(200, `
+						{
+							"getsSuccess": 10195,
+							"getsFail": 26705,
+							"setsSuccess": 2540,
+							"setsFail": 0,
+							"deleteSuccess": 0,
+							"deleteFail": 0,
+							"updateSuccess": 0,
+							"updateFail": 0,
+							"createSuccess": 18,
+							"createFail": 15252,
+							"compareAndSwapSuccess": 50350,
+							"compareAndSwapFail": 22,
+							"compareAndDeleteSuccess": 4,
+							"compareAndDeleteFail": 0,
+							"expireCount": 1,
+							"watchers": 12
+						}
+					`))
+
+					etcd2.RouteToHandler("GET", "/v2/keys", func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("X-Raft-Term", "123")
+					})
 
 					etcd3.RouteToHandler("GET", "/v2/stats/self", ghttp.RespondWith(200, `
             {
