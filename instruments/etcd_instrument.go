@@ -17,7 +17,6 @@ var errRedirected = errors.New("redirected to leader")
 const (
 	etcdLeader                = metric.Metric("ETCDLeader")
 	etcdFollowers             = metric.Metric("ETCDFollowers")
-	etcdWatcher               = metric.Metric("ETCDWatchers")
 	etcdReceivedBandwidthRate = metric.BytesPerSecond("ETCDReceivedBandwidthRate")
 	etcdSentBandwidthRate     = metric.BytesPerSecond("ETCDSentBandwidthRate")
 	etcdReceivedRequestRate   = metric.RequestsPerSecond("ETCDReceivedRequestRate")
