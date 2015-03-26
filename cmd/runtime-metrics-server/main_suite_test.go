@@ -3,6 +3,7 @@ package main_test
 import (
 	"testing"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -14,6 +15,10 @@ var metricsServerPath string
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
+var consulScheme string
+var consulDatacenter string
+var consulRunner consuladapter.ClusterRunner
+var consulAdapter consuladapter.Adapter
 
 func TestBulker(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -29,18 +34,29 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 	metricsServerPath = string(metricsServer)
 	etcdClient = etcdRunner.Adapter()
+
+	consulScheme = "http"
+	consulDatacenter = "dc"
+	consulRunner = consuladapter.NewClusterRunner(
+		9001+GinkgoParallelNode()*consuladapter.PortOffsetLength,
+		1,
+		consulScheme,
+	)
+
+	etcdRunner.Start()
+	consulRunner.Start()
 })
 
 var _ = BeforeEach(func() {
-	etcdRunner.Start()
-})
+	etcdRunner.Reset()
+	consulRunner.Reset()
 
-var _ = AfterEach(func() {
-	etcdRunner.Stop()
+	consulAdapter = consulRunner.NewAdapter()
 })
 
 var _ = SynchronizedAfterSuite(func() {
 	etcdRunner.Stop()
+	consulRunner.Stop()
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })

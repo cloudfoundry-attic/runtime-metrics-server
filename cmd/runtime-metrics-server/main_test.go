@@ -18,7 +18,7 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry/dropsonde/events"
-	"github.com/cloudfoundry/storeadapter"
+	"github.com/hashicorp/consul/consul/structs"
 	"github.com/pivotal-golang/clock"
 )
 
@@ -28,18 +28,23 @@ var _ = Describe("Runtime Metrics Server", func() {
 
 		process ifrit.Process
 
-		metricsServerLockName = "runtime_metrics_lock"
-		heartbeatInterval     time.Duration
-		reportInterval        time.Duration
-		testMetricsListener   net.PacketConn
-		testMetricsChan       chan *events.ValueMetric
+		metricsServerLockName  = "runtime_metrics_lock"
+		lockTTL                time.Duration
+		heartbeatRetryInterval time.Duration
+		reportInterval         time.Duration
+		testMetricsListener    net.PacketConn
+		testMetricsChan        chan *events.ValueMetric
 	)
 
 	startMetricsServer := func(check bool) {
 		cmd := exec.Command(metricsServerPath,
 			"-etcdCluster", strings.Join(etcdRunner.NodeURLS(), ","),
 			"-reportInterval", reportInterval.String(),
-			"-heartbeatInterval", heartbeatInterval.String(),
+			"-consulCluster", strings.Join(consulRunner.Addresses(), ","),
+			"-consulScheme", consulScheme,
+			"-consulDatacenter", consulDatacenter,
+			"-lockTTL", lockTTL.String(),
+			"-heartbeatRetryInterval", heartbeatRetryInterval.String(),
 			"-dropsondeOrigin", "test-metrics-server",
 			"-dropsondeDestination", testMetricsListener.LocalAddr().String(),
 		)
@@ -60,9 +65,10 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(etcdClient, clock.NewClock(), lagertest.NewTestLogger("test"))
+		bbs = Bbs.NewBBS(etcdClient, consulAdapter, clock.NewClock(), lagertest.NewTestLogger("test"))
 
-		heartbeatInterval = 10 * time.Millisecond
+		lockTTL = structs.SessionTTLMin
+		heartbeatRetryInterval = 100 * time.Millisecond
 		reportInterval = 10 * time.Millisecond
 
 		testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
@@ -99,30 +105,14 @@ var _ = Describe("Runtime Metrics Server", func() {
 		Eventually(process.Wait(), 5).Should(Receive())
 	})
 
-	Context("when the metrics server loses the lock", func() {
-		JustBeforeEach(func() {
-			startMetricsServer(true)
-
-			Eventually(testMetricsChan).Should(Receive())
-
-			err := etcdClient.Update(storeadapter.StoreNode{
-				Key:   shared.LockSchemaPath(metricsServerLockName),
-				Value: []byte("something-else"),
-			})
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("exits with an error", func() {
-			Eventually(process.Wait()).Should(Receive(HaveOccurred()))
-		})
-	})
-
 	Context("when the metrics server initially does not have the lock", func() {
 		BeforeEach(func() {
-			err := etcdClient.Create(storeadapter.StoreNode{
-				Key:   shared.LockSchemaPath(metricsServerLockName),
-				Value: []byte("something-else"),
-			})
+			_, err := consulAdapter.AcquireAndMaintainLock(
+				shared.LockSchemaPath(metricsServerLockName),
+				[]byte("something-else"),
+				structs.SessionTTLMin,
+				nil,
+			)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -136,7 +126,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 
 		Context("when the lock becomes available", func() {
 			BeforeEach(func() {
-				err := etcdClient.Delete(shared.LockSchemaPath(metricsServerLockName))
+				err := consulAdapter.ReleaseAndDeleteLock(shared.LockSchemaPath(metricsServerLockName))
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 

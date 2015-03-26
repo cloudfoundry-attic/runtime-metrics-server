@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
@@ -35,10 +36,34 @@ var reportInterval = flag.Duration(
 	"interval on which to report metrics",
 )
 
-var heartbeatInterval = flag.Duration(
-	"heartbeatInterval",
-	lock_bbs.HEARTBEAT_INTERVAL,
-	"the interval between heartbeats to the lock",
+var consulCluster = flag.String(
+	"consulCluster",
+	"",
+	"comma-separated list of consul server addresses (ip:port)",
+)
+
+var consulScheme = flag.String(
+	"consulScheme",
+	"http",
+	"protocol scheme for communication with consul servers",
+)
+
+var consulDatacenter = flag.String(
+	"consulDatacenter",
+	"dc1",
+	"consul datacenter",
+)
+
+var lockTTL = flag.Duration(
+	"lockTTL",
+	lock_bbs.LockTTL,
+	"TTL for service lock",
+)
+
+var heartbeatRetryInterval = flag.Duration(
+	"heartbeatRetryInterval",
+	lock_bbs.RetryInterval,
+	"interval to wait before retrying a failed lock acquisition",
 )
 
 var dropsondeOrigin = flag.String(
@@ -68,13 +93,13 @@ func main() {
 
 	logger, reconfigurableSink := cf_lager.New("runtime-metrics-server")
 	initializeDropsonde(logger)
-	metricsBBS := initializeMetricsBBS(logger)
+	metricsBBS := initializeMetricsBBS(logger, *etcdCluster, *consulCluster, *consulScheme, *consulDatacenter)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
-	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *heartbeatInterval)
+	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *lockTTL, *heartbeatRetryInterval)
 
 	notifier := metrics.PeriodicMetronNotifier{
 		Interval:    *reportInterval,
@@ -116,9 +141,9 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
+func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster, scheme, datacenter string) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(*etcdCluster, ","),
+		strings.Split(etcdCluster, ","),
 		workpool.NewWorkPool(10),
 	)
 
@@ -126,5 +151,13 @@ func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewMetricsBBS(etcdAdapter, clock.NewClock(), logger)
+	consulAdapter, err := consuladapter.NewAdapter(
+		strings.Split(consulCluster, ","),
+		scheme,
+	)
+	if err != nil {
+		logger.Fatal("failed-building-consul-adapter", err)
+	}
+
+	return Bbs.NewMetricsBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
 }

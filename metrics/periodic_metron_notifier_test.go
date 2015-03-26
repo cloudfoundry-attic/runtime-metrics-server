@@ -57,7 +57,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 	AfterEach(func() {
 		pmn.Signal(os.Interrupt)
-		Eventually(pmn.Wait()).Should(Receive())
+		Eventually(pmn.Wait(), 2*time.Second).Should(Receive())
 	})
 
 	Context("when the report interval elapses", func() {
@@ -291,10 +291,6 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 					models.Task{State: models.TaskStateResolving},
 				}, nil)
 
-				bbs.ServiceRegistrationsReturns(models.ServiceRegistrations{
-					{Name: models.CellServiceName, Id: "purple-elephants"},
-				}, nil)
-
 				bbs.DomainsReturns([]string{"some-domain", "some-other-domain"}, nil)
 
 				bbs.DesiredLRPsReturns([]models.DesiredLRP{
@@ -323,15 +319,6 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				}).Should(Equal(fake.Metric{
 					Value: float64(1 * time.Hour),
 					Unit:  "nanos",
-				}))
-			})
-
-			It("reports the number of registered services by type", func() {
-				Eventually(func() fake.Metric {
-					return sender.GetValue("ServiceRegistrationsCell")
-				}).Should(Equal(fake.Metric{
-					Value: 1,
-					Unit:  "Metric",
 				}))
 			})
 

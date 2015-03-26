@@ -29,7 +29,6 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 	tasksInstrument := instruments.NewTaskInstrument(notifier.Logger, notifier.MetricsBBS)
 	lrpsInstrument := instruments.NewLRPInstrument(notifier.MetricsBBS)
 	domainInstrument := instruments.NewDomainInstrument(notifier.MetricsBBS)
-	serviceRegistryInstrument := instruments.NewServiceRegistryInstrument(notifier.MetricsBBS)
 	etcdInstrument := instruments.NewETCDInstrument(notifier.Logger, notifier.ETCDCluster)
 
 	for {
@@ -40,7 +39,6 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 			tasksInstrument.Send()
 			lrpsInstrument.Send()
 			domainInstrument.Send()
-			serviceRegistryInstrument.Send()
 			etcdInstrument.Send()
 
 			finishedAt := notifier.Clock.Now()
