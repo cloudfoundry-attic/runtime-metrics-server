@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	. "github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
+	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
-	"github.com/cloudfoundry/dropsonde/metrics"
+	dropsonde_metrics "github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -42,11 +42,11 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Unix(123, 456))
 
 		sender = fake.NewFakeMetricSender()
-		metrics.Initialize(sender)
+		dropsonde_metrics.Initialize(sender)
 	})
 
 	JustBeforeEach(func() {
-		pmn = ifrit.Invoke(PeriodicMetronNotifier{
+		pmn = ifrit.Invoke(metrics.PeriodicMetronNotifier{
 			Interval:    reportInterval,
 			MetricsBBS:  bbs,
 			ETCDCluster: etcdCluster,
