@@ -39,19 +39,7 @@ var reportInterval = flag.Duration(
 var consulCluster = flag.String(
 	"consulCluster",
 	"",
-	"comma-separated list of consul server addresses (ip:port)",
-)
-
-var consulScheme = flag.String(
-	"consulScheme",
-	"http",
-	"protocol scheme for communication with consul servers",
-)
-
-var consulDatacenter = flag.String(
-	"consulDatacenter",
-	"dc1",
-	"consul datacenter",
+	"comma-separated list of consul server URLs (scheme://ip:port)",
 )
 
 var lockTTL = flag.Duration(
@@ -93,7 +81,7 @@ func main() {
 
 	logger, reconfigurableSink := cf_lager.New("runtime-metrics-server")
 	initializeDropsonde(logger)
-	metricsBBS := initializeMetricsBBS(logger, *etcdCluster, *consulCluster, *consulScheme, *consulDatacenter)
+	metricsBBS := initializeMetricsBBS(logger, *etcdCluster, *consulCluster)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
@@ -141,7 +129,7 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster, scheme, datacenter string) Bbs.MetricsBBS {
+func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster string) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(etcdCluster, ","),
 		workpool.NewWorkPool(10),
@@ -151,10 +139,12 @@ func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster, schem
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	consulAdapter, err := consuladapter.NewAdapter(
-		strings.Split(consulCluster, ","),
-		scheme,
-	)
+	consulScheme, consulAddresses, err := consuladapter.Parse(consulCluster)
+	if err != nil {
+		logger.Fatal("failed-parsing-consul-cluster", err)
+	}
+
+	consulAdapter, err := consuladapter.NewAdapter(consulAddresses, consulScheme)
 	if err != nil {
 		logger.Fatal("failed-building-consul-adapter", err)
 	}
