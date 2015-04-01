@@ -63,7 +63,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(etcdClient, consulAdapter, clock.NewClock(), lagertest.NewTestLogger("test"))
+		bbs = Bbs.NewBBS(etcdClient, consulAdapter, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test"))
 
 		lockTTL = structs.SessionTTLMin
 		heartbeatRetryInterval = 100 * time.Millisecond
