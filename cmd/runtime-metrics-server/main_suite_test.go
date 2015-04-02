@@ -49,6 +49,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
+
+	consulRunner.WaitUntilReady()
 	consulRunner.Reset()
 
 	consulAdapter = consulRunner.NewAdapter()
