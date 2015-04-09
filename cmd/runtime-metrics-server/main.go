@@ -81,13 +81,13 @@ func main() {
 
 	logger, reconfigurableSink := cf_lager.New("runtime-metrics-server")
 	initializeDropsonde(logger)
-	metricsBBS := initializeMetricsBBS(logger, *etcdCluster, *consulCluster)
+	metricsBBS := initializeMetricsBBS(logger)
 
 	uuid, err := uuid.NewV4()
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
-	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *lockTTL, *heartbeatRetryInterval)
+	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *heartbeatRetryInterval)
 
 	notifier := metrics.PeriodicMetronNotifier{
 		Interval:    *reportInterval,
@@ -129,9 +129,9 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster string) Bbs.MetricsBBS {
+func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(etcdCluster, ","),
+		strings.Split(*etcdCluster, ","),
 		workpool.NewWorkPool(10),
 	)
 
@@ -139,15 +139,16 @@ func initializeMetricsBBS(logger lager.Logger, etcdCluster, consulCluster string
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	consulScheme, consulAddresses, err := consuladapter.Parse(consulCluster)
+	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
-		logger.Fatal("failed-parsing-consul-cluster", err)
+		logger.Fatal("new-client-failed", err)
 	}
 
-	consulAdapter, err := consuladapter.NewAdapter(consulAddresses, consulScheme)
+	sessionMgr := consuladapter.NewSessionManager(client)
+	consulSession, err := consuladapter.NewSession("runtime-metrics-server", *lockTTL, client, sessionMgr)
 	if err != nil {
-		logger.Fatal("failed-building-consul-adapter", err)
+		logger.Fatal("consul-session-failed", err)
 	}
 
-	return Bbs.NewMetricsBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
+	return Bbs.NewMetricsBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
 }

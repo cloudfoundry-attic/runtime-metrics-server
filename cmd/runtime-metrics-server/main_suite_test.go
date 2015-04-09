@@ -18,7 +18,7 @@ var etcdClient storeadapter.StoreAdapter
 var consulScheme string
 var consulDatacenter string
 var consulRunner *consuladapter.ClusterRunner
-var consulAdapter *consuladapter.Adapter
+var consulSession *consuladapter.Session
 
 func TestBulker(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -45,15 +45,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	etcdRunner.Start()
 	consulRunner.Start()
+	consulRunner.WaitUntilReady()
 })
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
 
-	consulRunner.WaitUntilReady()
 	consulRunner.Reset()
-
-	consulAdapter = consulRunner.NewAdapter()
+	consulSession = consulRunner.NewSession("a-session")
 })
 
 var _ = SynchronizedAfterSuite(func() {

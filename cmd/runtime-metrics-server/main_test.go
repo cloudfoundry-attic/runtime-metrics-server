@@ -15,6 +15,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry/dropsonde/events"
@@ -63,7 +64,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(etcdClient, consulAdapter, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test"))
+		bbs = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test"))
 
 		lockTTL = structs.SessionTTLMin
 		heartbeatRetryInterval = 100 * time.Millisecond
@@ -104,13 +105,11 @@ var _ = Describe("Runtime Metrics Server", func() {
 	})
 
 	Context("when the metrics server initially does not have the lock", func() {
+		var otherSession *consuladapter.Session
+
 		BeforeEach(func() {
-			_, err := consulAdapter.AcquireAndMaintainLock(
-				shared.LockSchemaPath(metricsServerLockName),
-				[]byte("something-else"),
-				structs.SessionTTLMin,
-				nil,
-			)
+			otherSession = consulRunner.NewSession("other-session")
+			err := otherSession.AcquireLock(shared.LockSchemaPath(metricsServerLockName), []byte("something-else"))
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -124,8 +123,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 
 		Context("when the lock becomes available", func() {
 			BeforeEach(func() {
-				err := consulAdapter.ReleaseAndDeleteLock(shared.LockSchemaPath(metricsServerLockName))
-				Ω(err).ShouldNot(HaveOccurred())
+				otherSession.Destroy()
 			})
 
 			It("starts emitting metrics", func() {
