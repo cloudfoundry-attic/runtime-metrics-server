@@ -1,9 +1,8 @@
 package instruments
 
 import (
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -15,12 +14,12 @@ const (
 )
 
 type taskInstrument struct {
-	logger lager.Logger
-	bbs    bbs.MetricsBBS
+	logger         lager.Logger
+	receptorClient receptor.Client
 }
 
-func NewTaskInstrument(logger lager.Logger, metricsBbs bbs.MetricsBBS) Instrument {
-	return &taskInstrument{logger: logger, bbs: metricsBbs}
+func NewTaskInstrument(logger lager.Logger, receptorClient receptor.Client) Instrument {
+	return &taskInstrument{logger: logger, receptorClient: receptorClient}
 }
 
 func (t *taskInstrument) Send() {
@@ -29,22 +28,24 @@ func (t *taskInstrument) Send() {
 	completedCount := 0
 	resolvingCount := 0
 
-	allTasks, err := t.bbs.Tasks(t.logger)
+	allTasks, err := t.receptorClient.Tasks()
 
 	if err == nil {
 		for _, task := range allTasks {
 			switch task.State {
-			case models.TaskStatePending:
+			case receptor.TaskStatePending:
 				pendingCount++
-			case models.TaskStateRunning:
+			case receptor.TaskStateRunning:
 				runningCount++
-			case models.TaskStateCompleted:
+			case receptor.TaskStateCompleted:
 				completedCount++
-			case models.TaskStateResolving:
+			case receptor.TaskStateResolving:
 				resolvingCount++
 			}
 		}
 	} else {
+		t.logger.Error("failed-to-get-tasks", err)
+
 		pendingCount = -1
 		runningCount = -1
 		completedCount = -1

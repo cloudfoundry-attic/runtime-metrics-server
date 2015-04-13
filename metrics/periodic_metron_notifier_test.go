@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/receptor/fake_receptor"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	dropsonde_metrics "github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -27,7 +27,8 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 	var (
 		sender *fake.FakeMetricSender
 
-		bbs            *fake_bbs.FakeMetricsBBS
+		receptorClient *fake_receptor.FakeClient
+
 		etcdCluster    []string
 		reportInterval time.Duration
 		fakeClock      *fakeclock.FakeClock
@@ -38,21 +39,22 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 	BeforeEach(func() {
 		reportInterval = 100 * time.Millisecond
 
-		bbs = new(fake_bbs.FakeMetricsBBS)
 		fakeClock = fakeclock.NewFakeClock(time.Unix(123, 456))
+
+		receptorClient = new(fake_receptor.FakeClient)
 
 		sender = fake.NewFakeMetricSender()
 		dropsonde_metrics.Initialize(sender)
 	})
 
 	JustBeforeEach(func() {
-		pmn = ifrit.Invoke(metrics.PeriodicMetronNotifier{
-			Interval:    reportInterval,
-			MetricsBBS:  bbs,
-			ETCDCluster: etcdCluster,
-			Clock:       fakeClock,
-			Logger:      lagertest.NewTestLogger("test"),
-		})
+		pmn = ifrit.Invoke(metrics.NewPeriodicMetronNotifier(
+			lagertest.NewTestLogger("test"),
+			reportInterval,
+			etcdCluster,
+			fakeClock,
+			receptorClient,
+		))
 	})
 
 	AfterEach(func() {
@@ -275,40 +277,40 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		Context("when the read from the store succeeds", func() {
 			BeforeEach(func() {
-				bbs.TasksReturns([]models.Task{
-					models.Task{State: models.TaskStatePending},
-					models.Task{State: models.TaskStatePending},
-					models.Task{State: models.TaskStatePending},
+				receptorClient.TasksReturns([]receptor.TaskResponse{
+					receptor.TaskResponse{State: receptor.TaskStatePending},
+					receptor.TaskResponse{State: receptor.TaskStatePending},
+					receptor.TaskResponse{State: receptor.TaskStatePending},
 
-					models.Task{State: models.TaskStateRunning},
+					receptor.TaskResponse{State: receptor.TaskStateRunning},
 
-					models.Task{State: models.TaskStateCompleted},
-					models.Task{State: models.TaskStateCompleted},
-					models.Task{State: models.TaskStateCompleted},
-					models.Task{State: models.TaskStateCompleted},
+					receptor.TaskResponse{State: receptor.TaskStateCompleted},
+					receptor.TaskResponse{State: receptor.TaskStateCompleted},
+					receptor.TaskResponse{State: receptor.TaskStateCompleted},
+					receptor.TaskResponse{State: receptor.TaskStateCompleted},
 
-					models.Task{State: models.TaskStateResolving},
-					models.Task{State: models.TaskStateResolving},
+					receptor.TaskResponse{State: receptor.TaskStateResolving},
+					receptor.TaskResponse{State: receptor.TaskStateResolving},
 				}, nil)
 
-				bbs.DomainsReturns([]string{"some-domain", "some-other-domain"}, nil)
+				receptorClient.DomainsReturns([]string{"some-domain", "some-other-domain"}, nil)
 
-				bbs.DesiredLRPsReturns([]models.DesiredLRP{
+				receptorClient.DesiredLRPsReturns([]receptor.DesiredLRPResponse{
 					{ProcessGuid: "desired-1", Instances: 2},
 					{ProcessGuid: "desired-2", Instances: 3},
 				}, nil)
 
-				bbs.ActualLRPsStub = func() ([]models.ActualLRP, error) {
+				receptorClient.ActualLRPsStub = func() ([]receptor.ActualLRPResponse, error) {
 					fakeClock.Increment(time.Hour)
 
-					return []models.ActualLRP{
-						{ActualLRPKey: models.NewActualLRPKey("desired-1", 0, "domain"), State: models.ActualLRPStateRunning},
-						{ActualLRPKey: models.NewActualLRPKey("desired-1", 1, "domain"), State: models.ActualLRPStateRunning},
-						{ActualLRPKey: models.NewActualLRPKey("desired-2", 1, "domain"), State: models.ActualLRPStateClaimed},
-						{ActualLRPKey: models.NewActualLRPKey("desired-3", 0, "domain"), State: models.ActualLRPStateRunning},
-						{ActualLRPKey: models.NewActualLRPKey("desired-3", 1, "domain"), State: models.ActualLRPStateCrashed},
-						{ActualLRPKey: models.NewActualLRPKey("desired-3", 2, "domain"), State: models.ActualLRPStateCrashed},
-						{ActualLRPKey: models.NewActualLRPKey("desired-4", 0, "domain"), State: models.ActualLRPStateCrashed},
+					return []receptor.ActualLRPResponse{
+						{ProcessGuid: "desired-1", Index: 0, Domain: "domain", State: receptor.ActualLRPStateRunning},
+						{ProcessGuid: "desired-1", Index: 1, Domain: "domain", State: receptor.ActualLRPStateRunning},
+						{ProcessGuid: "desired-2", Index: 1, Domain: "domain", State: receptor.ActualLRPStateClaimed},
+						{ProcessGuid: "desired-3", Index: 0, Domain: "domain", State: receptor.ActualLRPStateRunning},
+						{ProcessGuid: "desired-3", Index: 1, Domain: "domain", State: receptor.ActualLRPStateCrashed},
+						{ProcessGuid: "desired-3", Index: 2, Domain: "domain", State: receptor.ActualLRPStateCrashed},
+						{ProcessGuid: "desired-4", Index: 0, Domain: "domain", State: receptor.ActualLRPStateCrashed},
 					}, nil
 				}
 			})
@@ -408,9 +410,9 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		Context("when the store cannot be reached", func() {
 			BeforeEach(func() {
-				bbs.TasksReturns(nil, errors.New("Doesn't work"))
-				bbs.DesiredLRPsReturns(nil, errors.New("no."))
-				bbs.ActualLRPsReturns(nil, errors.New("pushed to master"))
+				receptorClient.TasksReturns(nil, errors.New("Doesn't work"))
+				receptorClient.DesiredLRPsReturns(nil, errors.New("no."))
+				receptorClient.ActualLRPsReturns(nil, errors.New("pushed to master"))
 			})
 
 			It("reports -1 for all task metrics", func() {

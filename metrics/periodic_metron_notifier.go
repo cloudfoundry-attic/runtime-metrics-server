@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/instruments"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -14,11 +14,25 @@ import (
 const metricsReportingDuration = metric.Duration("MetricsReportingDuration")
 
 type PeriodicMetronNotifier struct {
-	Interval    time.Duration
-	MetricsBBS  bbs.MetricsBBS
-	ETCDCluster []string
-	Logger      lager.Logger
-	Clock       clock.Clock
+	Interval       time.Duration
+	ETCDCluster    []string
+	Logger         lager.Logger
+	Clock          clock.Clock
+	ReceptorClient receptor.Client
+}
+
+func NewPeriodicMetronNotifier(logger lager.Logger,
+	interval time.Duration,
+	etcdCluster []string,
+	clock clock.Clock,
+	receptorClient receptor.Client) *PeriodicMetronNotifier {
+	return &PeriodicMetronNotifier{
+		Interval:       interval,
+		ETCDCluster:    etcdCluster,
+		Logger:         logger,
+		Clock:          clock,
+		ReceptorClient: receptorClient,
+	}
 }
 
 func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -26,9 +40,9 @@ func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<
 
 	close(ready)
 
-	tasksInstrument := instruments.NewTaskInstrument(notifier.Logger, notifier.MetricsBBS)
-	lrpsInstrument := instruments.NewLRPInstrument(notifier.MetricsBBS)
-	domainInstrument := instruments.NewDomainInstrument(notifier.MetricsBBS)
+	tasksInstrument := instruments.NewTaskInstrument(notifier.Logger, notifier.ReceptorClient)
+	lrpsInstrument := instruments.NewLRPInstrument(notifier.ReceptorClient)
+	domainInstrument := instruments.NewDomainInstrument(notifier.ReceptorClient)
 	etcdInstrument := instruments.NewETCDInstrument(notifier.Logger, notifier.ETCDCluster)
 
 	for {

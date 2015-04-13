@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"strings"
@@ -10,18 +11,23 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/workpool"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
+)
+
+var diegoAPIURL = flag.String(
+	"diegoAPIURL",
+	"",
+	"URL of diego API",
 )
 
 var etcdCluster = flag.String(
@@ -80,7 +86,15 @@ func main() {
 	cf_http.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cf_lager.New("runtime-metrics-server")
+
+	if *diegoAPIURL == "" {
+		logger.Fatal("No receptor URL specified", errors.New("no receptor URL"))
+	}
+
 	initializeDropsonde(logger)
+
+	diegoAPIClient := receptor.NewClient(*diegoAPIURL)
+
 	metricsBBS := initializeMetricsBBS(logger)
 
 	uuid, err := uuid.NewV4()
@@ -89,17 +103,17 @@ func main() {
 	}
 	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *heartbeatRetryInterval)
 
-	notifier := metrics.PeriodicMetronNotifier{
-		Interval:    *reportInterval,
-		MetricsBBS:  metricsBBS,
-		ETCDCluster: strings.Split(*etcdCluster, ","),
-		Logger:      logger,
-		Clock:       clock.NewClock(),
-	}
+	notifier := metrics.NewPeriodicMetronNotifier(
+		logger,
+		*reportInterval,
+		strings.Split(*etcdCluster, ","),
+		clock.NewClock(),
+		diegoAPIClient,
+	)
 
 	members := grouper.Members{
 		{"heartbeater", heartbeater},
-		{"metrics", notifier},
+		{"metrics", *notifier},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -130,15 +144,6 @@ func initializeDropsonde(logger lager.Logger) {
 }
 
 func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
-	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(*etcdCluster, ","),
-		workpool.NewWorkPool(10),
-	)
-
-	if err := etcdAdapter.Connect(); err != nil {
-		logger.Fatal("failed-to-connect-to-etcd", err)
-	}
-
 	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
@@ -150,5 +155,5 @@ func initializeMetricsBBS(logger lager.Logger) Bbs.MetricsBBS {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return Bbs.NewMetricsBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
+	return Bbs.NewMetricsBBS(consulSession, clock.NewClock(), logger)
 }

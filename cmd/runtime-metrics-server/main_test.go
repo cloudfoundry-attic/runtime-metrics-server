@@ -11,22 +11,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry/dropsonde/events"
 	"github.com/hashicorp/consul/consul/structs"
-	"github.com/pivotal-golang/clock"
 )
 
 var _ = Describe("Runtime Metrics Server", func() {
 	var (
-		bbs *Bbs.BBS
-
 		process ifrit.Process
 
 		metricsServerLockName  = "runtime_metrics_lock"
@@ -46,6 +41,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 			"-heartbeatRetryInterval", heartbeatRetryInterval.String(),
 			"-dropsondeOrigin", "test-metrics-server",
 			"-dropsondeDestination", testMetricsListener.LocalAddr().String(),
+			"-diegoAPIURL", "http://receptor.bogus.com",
 		)
 
 		runner := ginkgomon.New(ginkgomon.Config{
@@ -64,8 +60,6 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test"))
-
 		lockTTL = structs.SessionTTLMin
 		heartbeatRetryInterval = 100 * time.Millisecond
 		reportInterval = 10 * time.Millisecond

@@ -1,9 +1,8 @@
 package instruments
 
 import (
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 const (
@@ -15,11 +14,11 @@ const (
 )
 
 type lrpInstrument struct {
-	bbs bbs.MetricsBBS
+	receptorClient receptor.Client
 }
 
-func NewLRPInstrument(metricsBbs bbs.MetricsBBS) Instrument {
-	return &lrpInstrument{bbs: metricsBbs}
+func NewLRPInstrument(receptorClient receptor.Client) Instrument {
+	return &lrpInstrument{receptorClient: receptorClient}
 }
 
 func (t *lrpInstrument) Send() {
@@ -28,7 +27,7 @@ func (t *lrpInstrument) Send() {
 	startingCount := 0
 	crashedCount := 0
 
-	allDesiredLRPs, err := t.bbs.DesiredLRPs()
+	allDesiredLRPs, err := t.receptorClient.DesiredLRPs()
 	if err == nil {
 		for _, lrp := range allDesiredLRPs {
 			desiredCount += lrp.Instances
@@ -39,15 +38,15 @@ func (t *lrpInstrument) Send() {
 
 	crashingDesireds := map[string]struct{}{}
 
-	allActualLRPs, err := t.bbs.ActualLRPs()
+	allActualLRPs, err := t.receptorClient.ActualLRPs()
 	if err == nil {
 		for _, lrp := range allActualLRPs {
 			switch lrp.State {
-			case models.ActualLRPStateClaimed:
+			case receptor.ActualLRPStateClaimed:
 				startingCount++
-			case models.ActualLRPStateRunning:
+			case receptor.ActualLRPStateRunning:
 				runningCount++
-			case models.ActualLRPStateCrashed:
+			case receptor.ActualLRPStateCrashed:
 				crashingDesireds[lrp.ProcessGuid] = struct{}{}
 				crashedCount++
 			}
