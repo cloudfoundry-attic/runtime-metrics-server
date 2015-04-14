@@ -54,8 +54,8 @@ var lockTTL = flag.Duration(
 	"TTL for service lock",
 )
 
-var heartbeatRetryInterval = flag.Duration(
-	"heartbeatRetryInterval",
+var lockRetryInterval = flag.Duration(
+	"lockRetryInterval",
 	lock_bbs.RetryInterval,
 	"interval to wait before retrying a failed lock acquisition",
 )
@@ -101,7 +101,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("Couldn't generate uuid", err)
 	}
-	heartbeater := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *heartbeatRetryInterval)
+	lockMaintainer := metricsBBS.NewRuntimeMetricsLock(uuid.String(), *lockRetryInterval)
 
 	notifier := metrics.NewPeriodicMetronNotifier(
 		logger,
@@ -112,7 +112,7 @@ func main() {
 	)
 
 	members := grouper.Members{
-		{"heartbeater", heartbeater},
+		{"lock-maintainer", lockMaintainer},
 		{"metrics", *notifier},
 	}
 

@@ -24,12 +24,12 @@ var _ = Describe("Runtime Metrics Server", func() {
 	var (
 		process ifrit.Process
 
-		metricsServerLockName  = "runtime_metrics_lock"
-		lockTTL                time.Duration
-		heartbeatRetryInterval time.Duration
-		reportInterval         time.Duration
-		testMetricsListener    net.PacketConn
-		testMetricsChan        chan *events.ValueMetric
+		metricsServerLockName = "runtime_metrics_lock"
+		lockTTL               time.Duration
+		lockRetryInterval     time.Duration
+		reportInterval        time.Duration
+		testMetricsListener   net.PacketConn
+		testMetricsChan       chan *events.ValueMetric
 	)
 
 	startMetricsServer := func(check bool) {
@@ -38,7 +38,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 			"-reportInterval", reportInterval.String(),
 			"-consulCluster", consulRunner.ConsulCluster(),
 			"-lockTTL", lockTTL.String(),
-			"-heartbeatRetryInterval", heartbeatRetryInterval.String(),
+			"-lockRetryInterval", lockRetryInterval.String(),
 			"-dropsondeOrigin", "test-metrics-server",
 			"-dropsondeDestination", testMetricsListener.LocalAddr().String(),
 			"-diegoAPIURL", "http://receptor.bogus.com",
@@ -61,7 +61,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 
 	BeforeEach(func() {
 		lockTTL = structs.SessionTTLMin
-		heartbeatRetryInterval = 100 * time.Millisecond
+		lockRetryInterval = 100 * time.Millisecond
 		reportInterval = 10 * time.Millisecond
 
 		testMetricsListener, _ = net.ListenPacket("udp", "127.0.0.1:0")
