@@ -78,7 +78,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 
 				var envelope events.Envelope
 				err = proto.Unmarshal(buffer[:n], &envelope)
-				Ω(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				if envelope.GetEventType() == events.Envelope_ValueMetric &&
 					envelope.ValueMetric.GetName() == "TasksPending" {
@@ -104,7 +104,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 		BeforeEach(func() {
 			otherSession = consulRunner.NewSession("other-session")
 			err := otherSession.AcquireLock(shared.LockSchemaPath(metricsServerLockName), []byte("something-else"))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {

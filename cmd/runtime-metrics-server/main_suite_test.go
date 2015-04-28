@@ -27,7 +27,7 @@ func TestBulker(t *testing.T) {
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	metricsServer, err := gexec.Build("github.com/cloudfoundry-incubator/runtime-metrics-server/cmd/runtime-metrics-server", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return []byte(metricsServer)
 }, func(metricsServer []byte) {
 	etcdPort := 5001 + GinkgoParallelNode()
