@@ -44,7 +44,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 		receptorClient = new(fake_receptor.FakeClient)
 
 		sender = fake.NewFakeMetricSender()
-		dropsonde_metrics.Initialize(sender)
+		dropsonde_metrics.Initialize(sender, nil)
 	})
 
 	JustBeforeEach(func() {
