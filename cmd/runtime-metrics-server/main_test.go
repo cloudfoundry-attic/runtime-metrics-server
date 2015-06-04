@@ -112,7 +112,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 		})
 
 		It("does not emit any metrics", func() {
-			Consistently(testMetricsChan).ShouldNot(Receive())
+			Consistently(testMetricsChan, 2*lockRetryInterval).ShouldNot(Receive())
 		})
 
 		Context("when the lock becomes available", func() {
