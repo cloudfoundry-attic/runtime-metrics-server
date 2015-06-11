@@ -31,9 +31,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	return []byte(metricsServer)
 }, func(metricsServer []byte) {
 	etcdPort := 5001 + GinkgoParallelNode()
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
 	metricsServerPath = string(metricsServer)
-	etcdClient = etcdRunner.Adapter()
+	etcdClient = etcdRunner.Adapter(nil)
 
 	consulScheme = "http"
 	consulDatacenter = "dc"
