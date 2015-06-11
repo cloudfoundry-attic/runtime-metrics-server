@@ -20,6 +20,8 @@ var consulDatacenter string
 var consulRunner *consuladapter.ClusterRunner
 var consulSession *consuladapter.Session
 
+const assetsPath = "../../../../cloudfoundry/storeadapter/assets/"
+
 func TestBulker(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Runtime Metrics Server Suite")
@@ -31,9 +33,19 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	return []byte(metricsServer)
 }, func(metricsServer []byte) {
 	etcdPort := 5001 + GinkgoParallelNode()
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1,
+		&etcdstorerunner.SSLConfig{
+			CertFile: assetsPath + "server.crt",
+			KeyFile:  assetsPath + "server.key",
+			CAFile:   assetsPath + "ca.crt",
+		})
 	metricsServerPath = string(metricsServer)
-	etcdClient = etcdRunner.Adapter()
+	etcdClient = etcdRunner.Adapter(
+		&etcdstorerunner.SSLConfig{
+			CertFile: assetsPath + "client.crt",
+			KeyFile:  assetsPath + "client.key",
+			CAFile:   assetsPath + "ca.crt",
+		})
 
 	consulScheme = "http"
 	consulDatacenter = "dc"
