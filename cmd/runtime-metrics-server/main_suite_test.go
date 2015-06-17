@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -17,7 +18,7 @@ var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
 var consulScheme string
 var consulDatacenter string
-var consulRunner *consuladapter.ClusterRunner
+var consulRunner *consulrunner.ClusterRunner
 var consulSession *consuladapter.Session
 
 func TestBulker(t *testing.T) {
@@ -37,8 +38,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	consulScheme = "http"
 	consulDatacenter = "dc"
-	consulRunner = consuladapter.NewClusterRunner(
-		9001+GinkgoParallelNode()*consuladapter.PortOffsetLength,
+	consulRunner = consulrunner.NewClusterRunner(
+		9001+GinkgoParallelNode()*consulrunner.PortOffsetLength,
 		1,
 		consulScheme,
 	)
