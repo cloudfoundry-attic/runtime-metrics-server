@@ -17,7 +17,6 @@ import (
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/hashicorp/consul/consul/structs"
 )
 
 var _ = Describe("Runtime Metrics Server", func() {
@@ -60,7 +59,7 @@ var _ = Describe("Runtime Metrics Server", func() {
 	}
 
 	BeforeEach(func() {
-		lockTTL = structs.SessionTTLMin
+		lockTTL = consulRunner.SessionTTL()
 		lockRetryInterval = 100 * time.Millisecond
 		reportInterval = 10 * time.Millisecond
 
