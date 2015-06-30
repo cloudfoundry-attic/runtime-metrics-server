@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
@@ -16,6 +15,7 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry/dropsonde"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -28,12 +28,6 @@ var diegoAPIURL = flag.String(
 	"diegoAPIURL",
 	"",
 	"URL of diego API",
-)
-
-var etcdCluster = flag.String(
-	"etcdCluster",
-	"http://127.0.0.1:4001",
-	"comma-separated list of etcd addresses (http://ip:port)",
 )
 
 var reportInterval = flag.Duration(
@@ -81,11 +75,17 @@ var communicationTimeout = flag.Duration(
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
+	etcdFlags := etcdstoreadapter.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	cf_http.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cf_lager.New("runtime-metrics-server")
+
+	etcdOptions, err := etcdFlags.Validate()
+	if err != nil {
+		logger.Fatal("etcd-validation-failed", err)
+	}
 
 	if *diegoAPIURL == "" {
 		logger.Fatal("No receptor URL specified", errors.New("no receptor URL"))
@@ -106,7 +106,7 @@ func main() {
 	notifier := metrics.NewPeriodicMetronNotifier(
 		logger,
 		*reportInterval,
-		strings.Split(*etcdCluster, ","),
+		etcdOptions.ClusterUrls,
 		clock.NewClock(),
 		diegoAPIClient,
 	)
