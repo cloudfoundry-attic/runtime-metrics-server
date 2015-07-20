@@ -106,7 +106,7 @@ func main() {
 	notifier := metrics.NewPeriodicMetronNotifier(
 		logger,
 		*reportInterval,
-		etcdOptions.ClusterUrls,
+		etcdOptions,
 		clock.NewClock(),
 		diegoAPIClient,
 	)

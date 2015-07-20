@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/instruments"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -15,7 +16,7 @@ const metricsReportingDuration = metric.Duration("MetricsReportingDuration")
 
 type PeriodicMetronNotifier struct {
 	Interval       time.Duration
-	ETCDCluster    []string
+	ETCDOptions    *etcdstoreadapter.ETCDOptions
 	Logger         lager.Logger
 	Clock          clock.Clock
 	ReceptorClient receptor.Client
@@ -23,12 +24,12 @@ type PeriodicMetronNotifier struct {
 
 func NewPeriodicMetronNotifier(logger lager.Logger,
 	interval time.Duration,
-	etcdCluster []string,
+	etcdOptions *etcdstoreadapter.ETCDOptions,
 	clock clock.Clock,
 	receptorClient receptor.Client) *PeriodicMetronNotifier {
 	return &PeriodicMetronNotifier{
 		Interval:       interval,
-		ETCDCluster:    etcdCluster,
+		ETCDOptions:    etcdOptions,
 		Logger:         logger,
 		Clock:          clock,
 		ReceptorClient: receptorClient,
@@ -36,14 +37,20 @@ func NewPeriodicMetronNotifier(logger lager.Logger,
 }
 
 func (notifier PeriodicMetronNotifier) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+
+	etcdInstrument, err := instruments.NewETCDInstrument(notifier.Logger, notifier.ETCDOptions)
+	if err != nil {
+		return err
+	}
+
 	ticker := notifier.Clock.NewTicker(notifier.Interval)
+	defer ticker.Stop()
 
 	close(ready)
 
 	tasksInstrument := instruments.NewTaskInstrument(notifier.Logger, notifier.ReceptorClient)
 	lrpsInstrument := instruments.NewLRPInstrument(notifier.ReceptorClient)
 	domainInstrument := instruments.NewDomainInstrument(notifier.ReceptorClient)
-	etcdInstrument := instruments.NewETCDInstrument(notifier.Logger, notifier.ETCDCluster)
 
 	for {
 		select {

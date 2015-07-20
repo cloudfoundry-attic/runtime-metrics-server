@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-metrics-server/metrics"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	dropsonde_metrics "github.com/cloudfoundry/dropsonde/metrics"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -29,7 +30,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 
 		receptorClient *fake_receptor.FakeClient
 
-		etcdCluster    []string
+		etcdOptions    etcdstoreadapter.ETCDOptions
 		reportInterval time.Duration
 		fakeClock      *fakeclock.FakeClock
 
@@ -51,7 +52,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 		pmn = ifrit.Invoke(metrics.NewPeriodicMetronNotifier(
 			lagertest.NewTestLogger("test"),
 			reportInterval,
-			etcdCluster,
+			&etcdOptions,
 			fakeClock,
 			receptorClient,
 		))
@@ -79,7 +80,7 @@ var _ = Describe("PeriodicMetronNotifier", func() {
 				etcd2 = ghttp.NewServer()
 				etcd3 = ghttp.NewServer()
 
-				etcdCluster = []string{
+				etcdOptions.ClusterUrls = []string{
 					etcd1.URL(),
 					etcd2.URL(),
 					etcd3.URL(),

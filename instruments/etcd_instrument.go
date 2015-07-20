@@ -1,6 +1,7 @@
 package instruments
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry/gunk/urljoiner"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -33,19 +35,34 @@ type etcdInstrument struct {
 	client *http.Client
 }
 
-func NewETCDInstrument(logger lager.Logger, etcdCluster []string) Instrument {
+func NewETCDInstrument(logger lager.Logger, etcdOptions *etcdstoreadapter.ETCDOptions) (Instrument, error) {
+	var tlsConfig *tls.Config
+	if etcdOptions.CertFile != "" && etcdOptions.KeyFile != "" {
+		var err error
+		tlsConfig, err = cf_http.NewTLSConfig(etcdOptions.CertFile, etcdOptions.KeyFile, etcdOptions.CAFile)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	client := cf_http.NewClient()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error {
 		return errRedirected
 	}
 
+	if tr, ok := client.Transport.(*http.Transport); ok {
+		tr.TLSClientConfig = tlsConfig
+	} else {
+		return nil, errors.New("Invalid transport")
+	}
+
 	return &etcdInstrument{
 		logger: logger,
 
-		etcdCluster: etcdCluster,
+		etcdCluster: etcdOptions.ClusterUrls,
 
 		client: client,
-	}
+	}, nil
 }
 
 func (t *etcdInstrument) Send() {
